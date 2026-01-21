@@ -1,14 +1,123 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Prisma schema for SplitUp - Expense Splitting App
+// See PROJECT_CONTEXT.md for detailed documentation
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ============================================
+// GROUPS & MEMBERSHIP
+// ============================================
+
+model Group {
+  id                   String   @id @default(cuid())
+  name                 String
+  createdByClerkUserId String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  members  GroupMember[]
+  expenses Expense[]
+  invites  GroupInvite[]
+
+  @@index([createdByClerkUserId])
+}
+
+model GroupMember {
+  id                  String    @id @default(cuid())
+  groupId             String
+  clerkUserId         String
+  role                GroupRole @default(MEMBER)
+  displayNameSnapshot String // Cached display name at join time
+  joinedAt            DateTime  @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, clerkUserId]) // Prevent duplicate memberships
+  @@index([clerkUserId])
+}
+
+enum GroupRole {
+  ADMIN
+  MEMBER
+}
+
+// ============================================
+// EXPENSES & SPLITS
+// ============================================
+
+model Expense {
+  id               String   @id @default(cuid())
+  groupId          String
+  title            String
+  amountCents      Int // Always positive integer, stored in cents
+  payerClerkUserId String
+  category         String?
+  expenseDate      DateTime @default(now())
+  receiptUrl       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  group  Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  splits ExpenseSplit[]
+
+  @@index([groupId])
+  @@index([payerClerkUserId])
+  @@index([expenseDate])
+}
+
+model ExpenseSplit {
+  id          String @id @default(cuid())
+  expenseId   String
+  clerkUserId String
+  shareCents  Int // Amount this user owes (>= 0), stored in cents
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, clerkUserId]) // One split per user per expense
+  @@index([clerkUserId])
+}
+
+// ============================================
+// INVITES
+// ============================================
+
+model GroupInvite {
+  id                   String   @id @default(cuid())
+  groupId              String
+  token                String   @unique
+  expiresAt            DateTime
+  createdAt            DateTime @default(now())
+  createdByClerkUserId String
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([groupId])
+}
+
+// ============================================
+// SETTLEMENTS (Phase 10 - Optional)
+// ============================================
+
+model Settlement {
+  id              String           @id @default(cuid())
+  groupId         String
+  fromClerkUserId String
+  toClerkUserId   String
+  amountCents     Int
+  status          SettlementStatus @default(PENDING)
+  settledAt       DateTime?
+  createdAt       DateTime         @default(now())
+
+  @@index([groupId])
+}
+
+enum SettlementStatus {
+  PENDING
+  COMPLETED
 }

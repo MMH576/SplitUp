@@ -481,21 +481,21 @@ splitup/
 ---
 
 ### Phase 2: Database Schema & Migrations
-**Status**: NOT STARTED
+**Status**: COMPLETE
 
 **Objective**: Establish the data layer with correct constraints.
 
 **Tasks**:
-1. [ ] Initialize Prisma with PostgreSQL
-2. [ ] Create schema.prisma with all models (see schema above)
-3. [ ] Run initial migration
-4. [ ] Create Prisma client singleton (`src/lib/prisma.ts`)
+1. [x] Initialize Prisma with PostgreSQL
+2. [x] Create schema.prisma with all models (see schema above)
+3. [x] Run initial migration
+4. [x] Create Prisma client singleton (`src/lib/prisma.ts`)
 5. [ ] (Optional) Create seed script for testing
 
 **Verification Checklist**:
-- [ ] Prisma Studio shows all tables
-- [ ] Can manually create/query records
-- [ ] Constraints enforce uniqueness
+- [x] Prisma Studio shows all tables
+- [x] Can manually create/query records
+- [x] Constraints enforce uniqueness
 
 **Critical Code - Prisma Client Singleton**:
 ```typescript
