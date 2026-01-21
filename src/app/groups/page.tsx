@@ -1,7 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CreateGroupDialog } from "@/components/groups/create-group-dialog";
+import { GroupCard } from "@/components/groups/group-card";
+import { JoinGroupDialog } from "@/components/groups/join-group-dialog";
 
 export default async function GroupsPage() {
   const { userId } = await auth();
@@ -10,8 +13,27 @@ export default async function GroupsPage() {
     redirect("/sign-in");
   }
 
-  // TODO: Fetch user's groups from database (Phase 4)
-  const groups: { id: string; name: string; memberCount: number }[] = [];
+  // Fetch user's groups from database
+  const memberships = await prisma.groupMember.findMany({
+    where: { clerkUserId: userId },
+    include: {
+      group: {
+        include: {
+          _count: {
+            select: { members: true },
+          },
+        },
+      },
+    },
+    orderBy: { joinedAt: "desc" },
+  });
+
+  const groups = memberships.map((m) => ({
+    id: m.group.id,
+    name: m.group.name,
+    memberCount: m.group._count.members,
+    role: m.role,
+  }));
 
   return (
     <div className="container py-8">
@@ -23,8 +45,8 @@ export default async function GroupsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">Join Group</Button>
-          <Button>Create Group</Button>
+          <JoinGroupDialog />
+          <CreateGroupDialog />
         </div>
       </div>
 
@@ -37,19 +59,20 @@ export default async function GroupsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center gap-4">
-            <Button variant="outline">Join Group</Button>
-            <Button>Create Group</Button>
+            <JoinGroupDialog />
+            <CreateGroupDialog />
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {groups.map((group) => (
-            <Card key={group.id} className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader>
-                <CardTitle>{group.name}</CardTitle>
-                <CardDescription>{group.memberCount} members</CardDescription>
-              </CardHeader>
-            </Card>
+            <GroupCard
+              key={group.id}
+              id={group.id}
+              name={group.name}
+              memberCount={group.memberCount}
+              role={group.role}
+            />
           ))}
         </div>
       )}

@@ -584,49 +584,49 @@ export async function requireGroupAdmin(groupId: string) {
 ---
 
 ### Phase 4: MVP Screens (Groups + Join + Dashboard)
-**Status**: NOT STARTED
+**Status**: COMPLETE
 
 **Objective**: Build navigation and UI shell before complex money logic.
 
 #### Phase 4A: Groups List Page (`/groups`)
 **Tasks**:
-1. [ ] Create groups list page
-2. [ ] Fetch user's groups from database
-3. [ ] Create group card component
-4. [ ] Create "Create Group" dialog
-5. [ ] Create `POST /api/groups` endpoint
+1. [x] Create groups list page
+2. [x] Fetch user's groups from database
+3. [x] Create group card component
+4. [x] Create "Create Group" dialog
+5. [x] Create `POST /api/groups` endpoint
 
 **Verification Checklist**:
-- [ ] Can create a new group
-- [ ] Groups list shows only user's groups
-- [ ] Group creator is auto-added as ADMIN
+- [x] Can create a new group
+- [x] Groups list shows only user's groups
+- [x] Group creator is auto-added as ADMIN
 
 #### Phase 4B: Invite System (`/join/[token]`)
 **Tasks**:
-1. [ ] Create `POST /api/groups/[groupId]/invites` endpoint
-2. [ ] Create invite dialog component
-3. [ ] Create join page (`/join/[token]`)
-4. [ ] Create `POST /api/invites/[token]/accept` endpoint
-5. [ ] Handle expired invites gracefully
+1. [x] Create `POST /api/groups/[groupId]/invites` endpoint
+2. [x] Create invite dialog component
+3. [x] Create join page (`/join/[token]`)
+4. [x] Create `POST /api/invites/[token]/accept` endpoint
+5. [x] Handle expired invites gracefully
 
 **Verification Checklist**:
-- [ ] Can generate invite link
-- [ ] Invite link adds user to group
-- [ ] Expired links show error
-- [ ] Joining twice doesn't duplicate membership
-- [ ] New member appears in group
+- [x] Can generate invite link
+- [x] Invite link adds user to group
+- [x] Expired links show error
+- [x] Joining twice doesn't duplicate membership
+- [x] New member appears in group
 
 #### Phase 4C: Group Dashboard Shell (`/groups/[groupId]`)
 **Tasks**:
-1. [ ] Create group detail page layout
-2. [ ] Create tab navigation (Expenses, Balances, Settle, Settings)
-3. [ ] Show group name and member count
-4. [ ] Create placeholder content for each tab
+1. [x] Create group detail page layout
+2. [x] Create tab navigation (Expenses, Balances, Settle, Settings)
+3. [x] Show group name and member count
+4. [x] Create placeholder content for each tab
 
 **Verification Checklist**:
-- [ ] Tabs navigate correctly
-- [ ] Non-members see 403/redirect
-- [ ] Group info displays correctly
+- [x] Tabs navigate correctly
+- [x] Non-members see 403/redirect
+- [x] Group info displays correctly
 
 ---
 
