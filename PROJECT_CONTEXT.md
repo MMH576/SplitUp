@@ -456,22 +456,22 @@ splitup/
 ---
 
 ### Phase 1: Project Setup
-**Status**: NOT STARTED
+**Status**: COMPLETE
 
 **Objective**: Create a working foundation with auth.
 
 **Tasks**:
-1. [ ] Initialize Next.js project with TypeScript and App Router
-2. [ ] Install core dependencies:
+1. [x] Initialize Next.js project with TypeScript and App Router
+2. [x] Install core dependencies:
    - `@clerk/nextjs`
    - `prisma` and `@prisma/client`
    - `zod`
    - Tailwind CSS
-3. [ ] Set up shadcn/ui
-4. [ ] Configure environment variables
-5. [ ] Set up Clerk middleware for protected routes
-6. [ ] Create basic layout with navbar and UserButton
-7. [ ] Create sign-in and sign-up pages
+3. [x] Set up shadcn/ui
+4. [x] Configure environment variables
+5. [x] Set up Clerk middleware for protected routes
+6. [x] Create basic layout with navbar and UserButton
+7. [x] Create sign-in and sign-up pages
 
 **Verification Checklist**:
 - [ ] Can sign in and sign out
