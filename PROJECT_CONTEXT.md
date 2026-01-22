@@ -978,17 +978,17 @@ export function formatMoney(cents: number): string {
 ---
 
 ### Phase 10: Mark Paid Settlements (Optional)
-**Status**: NOT STARTED
+**Status**: COMPLETE
 
 **Objective**: Track when debts are settled.
 
-**Approach**: Store settlement records without affecting balance calculations.
+**Approach**: Store settlement records that affect balance calculations.
 
 **Tasks**:
-1. [ ] Create Settlement model (already in schema)
-2. [ ] Create "Mark as paid" UI
-3. [ ] Create settlement history view
-4. [ ] Settlement doesn't change computed balances
+1. [x] Create Settlement model (already in schema)
+2. [x] Create "Mark as paid" UI - Added button to each transfer in settlement plan
+3. [x] Create settlement history view - Shows completed payments with undo option
+4. [x] Completed settlements reduce balances - When paid, the settlement amount is applied to both parties' balances
 
 ---
 

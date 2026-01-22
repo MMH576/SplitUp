@@ -69,7 +69,30 @@ export default async function GroupPage({ params }: PageProps) {
   const balances = await calculateGroupBalances(groupId);
 
   // Calculate settlement plan for the Settle Up tab
-  const settlements = calculateSettlements(balances);
+  const transfers = calculateSettlements(balances);
+
+  // Fetch settlement records (payments that have been marked as done)
+  const settlementRecords = await prisma.settlement.findMany({
+    where: { groupId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  // Map settlement records with display names
+  const memberMap = new Map(
+    group.members.map((m) => [m.clerkUserId, m.displayNameSnapshot])
+  );
+
+  const settlementsWithNames = settlementRecords.map((s) => ({
+    id: s.id,
+    fromClerkUserId: s.fromClerkUserId,
+    toClerkUserId: s.toClerkUserId,
+    amountCents: s.amountCents,
+    status: s.status,
+    settledAt: s.settledAt?.toISOString() ?? null,
+    createdAt: s.createdAt.toISOString(),
+    fromDisplayName: memberMap.get(s.fromClerkUserId) ?? "Unknown",
+    toDisplayName: memberMap.get(s.toClerkUserId) ?? "Unknown",
+  }));
 
   // Prepare expense breakdown for the current user's summary
   const expenseBreakdown = group.expenses.map((expense) => {
@@ -274,9 +297,11 @@ export default async function GroupPage({ params }: PageProps) {
             </Card>
           ) : (
             <SettlementPlan
-              transfers={settlements}
+              transfers={transfers}
               currentUserId={userId}
               expenseBreakdown={expenseBreakdown}
+              groupId={groupId}
+              settlements={settlementsWithNames}
             />
           )}
         </TabsContent>

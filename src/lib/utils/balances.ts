@@ -25,6 +25,7 @@ export interface MemberBalance {
 
 /**
  * Calculate net balances for all members in a group.
+ * Takes into account both expenses AND completed settlements.
  *
  * @param groupId - The group to calculate balances for
  * @returns Array of member balances, sorted by absolute value (largest first)
@@ -37,6 +38,14 @@ export async function calculateGroupBalances(
     where: { groupId },
     include: {
       splits: true,
+    },
+  });
+
+  // Get all completed settlements for this group
+  const settlements = await prisma.settlement.findMany({
+    where: {
+      groupId,
+      status: "COMPLETED",
     },
   });
 
@@ -63,6 +72,24 @@ export async function calculateGroupBalances(
       const splitBalance = balanceMap.get(split.clerkUserId) ?? 0;
       balanceMap.set(split.clerkUserId, splitBalance - split.shareCents);
     }
+  }
+
+  // Apply completed settlements to balances
+  // When A pays B, A's debt decreases (balance goes up) and B's credit decreases (balance goes down)
+  for (const settlement of settlements) {
+    // The payer (from) gets credit for paying
+    const fromBalance = balanceMap.get(settlement.fromClerkUserId) ?? 0;
+    balanceMap.set(
+      settlement.fromClerkUserId,
+      fromBalance + settlement.amountCents
+    );
+
+    // The receiver (to) gets debited (they received payment, so their credit reduces)
+    const toBalance = balanceMap.get(settlement.toClerkUserId) ?? 0;
+    balanceMap.set(
+      settlement.toClerkUserId,
+      toBalance - settlement.amountCents
+    );
   }
 
   // Convert to array with display names
