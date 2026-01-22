@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InviteDialog } from "@/components/groups/invite-dialog";
 import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
 import { formatMoney } from "@/lib/utils/money";
+import { calculateGroupBalances } from "@/lib/utils/balances";
 
 type PageProps = {
   params: Promise<{ groupId: string }>;
@@ -61,6 +62,9 @@ export default async function GroupPage({ params }: PageProps) {
     clerkUserId: m.clerkUserId,
     displayName: m.displayNameSnapshot,
   }));
+
+  // Calculate balances for the Balances tab
+  const balances = await calculateGroupBalances(groupId);
 
   return (
     <div className="container py-8">
@@ -151,14 +155,88 @@ export default async function GroupPage({ params }: PageProps) {
 
         {/* Balances Tab */}
         <TabsContent value="balances" className="space-y-4">
-          <Card className="border-dashed">
-            <CardHeader className="text-center">
-              <CardTitle>Balances</CardTitle>
-              <CardDescription>
-                Balance calculations will be implemented in Phase 6.
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          {group.expenses.length === 0 ? (
+            <Card className="border-dashed">
+              <CardHeader className="text-center">
+                <CardTitle>No expenses yet</CardTitle>
+                <CardDescription>
+                  Add expenses to see who owes whom.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
+            <>
+              {/* Summary Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Group Balances</CardTitle>
+                  <CardDescription>
+                    Positive balance = others owe you. Negative = you owe others.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {balances.map((balance) => {
+                      const isCurrentUser = balance.clerkUserId === userId;
+                      const isPositive = balance.netCents > 0;
+                      const isZero = balance.netCents === 0;
+
+                      return (
+                        <div
+                          key={balance.clerkUserId}
+                          className="flex items-center justify-between py-3 border-b last:border-0"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {balance.displayName}
+                              {isCurrentUser && (
+                                <span className="text-muted-foreground font-normal"> (you)</span>
+                              )}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            {isZero ? (
+                              <span className="text-muted-foreground">Settled up</span>
+                            ) : isPositive ? (
+                              <div>
+                                <span className="text-green-600 font-semibold">
+                                  +{formatMoney(balance.netCents)}
+                                </span>
+                                <p className="text-xs text-muted-foreground">
+                                  is owed
+                                </p>
+                              </div>
+                            ) : (
+                              <div>
+                                <span className="text-red-600 font-semibold">
+                                  {formatMoney(balance.netCents)}
+                                </span>
+                                <p className="text-xs text-muted-foreground">
+                                  owes
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* All Settled Message */}
+              {balances.every((b) => b.netCents === 0) && (
+                <Card className="border-green-200 bg-green-50">
+                  <CardHeader className="text-center">
+                    <CardTitle className="text-green-700">All settled up!</CardTitle>
+                    <CardDescription>
+                      Everyone in this group is square. No payments needed.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+            </>
+          )}
         </TabsContent>
 
         {/* Settle Up Tab */}
