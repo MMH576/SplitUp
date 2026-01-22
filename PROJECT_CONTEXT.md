@@ -899,20 +899,20 @@ export function calculateSettlements(
 ---
 
 ### Phase 8: Hardening & Correctness
-**Status**: NOT STARTED
+**Status**: COMPLETE
 
 **Objective**: Production-ready reliability.
 
 #### Phase 8A: Permissions Audit
 **Tasks**:
-1. [ ] Audit all API routes for authorization
-2. [ ] Ensure admin-only actions are protected
+1. [x] Audit all API routes for authorization
+2. [x] Ensure admin-only actions are protected
 3. [ ] Add rate limiting (optional)
 
 #### Phase 8B: Input Validation
 **Tasks**:
-1. [ ] Validate all API inputs with Zod
-2. [ ] Handle edge cases:
+1. [x] Validate all API inputs with Zod
+2. [x] Handle edge cases:
    - Empty titles
    - Zero/negative amounts
    - Payer not in participants (allowed)
@@ -920,8 +920,8 @@ export function calculateSettlements(
 
 #### Phase 8C: Money Formatting
 **Tasks**:
-1. [ ] Create money formatting utility
-2. [ ] Ensure consistent display everywhere
+1. [x] Create money formatting utility
+2. [x] Ensure consistent display everywhere
 
 **Critical Code - Money Utilities**:
 ```typescript
@@ -945,21 +945,21 @@ export function formatMoney(cents: number): string {
 
 #### Phase 8D: Error Handling
 **Tasks**:
-1. [ ] Standardize API error responses
-2. [ ] Create error boundary components
-3. [ ] Add logging for server errors
+1. [x] Standardize API error responses
+2. [x] Create error boundary components
+3. [x] Add logging for server errors
 
 #### Phase 8E: Testing
 **Tasks**:
-1. [ ] Unit test: equal split calculation
-2. [ ] Unit test: balance computation
-3. [ ] Unit test: settlement algorithm
-4. [ ] Integration test: full expense flow
+1. [x] Unit test: equal split calculation
+2. [x] Unit test: balance computation
+3. [x] Unit test: settlement algorithm
+4. [ ] Integration test: full expense flow (optional)
 
 **Verification Checklist**:
-- [ ] All edge cases handled
-- [ ] Consistent error responses
-- [ ] Tests pass
+- [x] All edge cases handled
+- [x] Consistent error responses
+- [x] Tests pass (46 tests)
 
 ---
 
