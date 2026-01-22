@@ -631,17 +631,17 @@ export async function requireGroupAdmin(groupId: string) {
 ---
 
 ### Phase 5: Add Expense (Equal Split)
-**Status**: NOT STARTED
+**Status**: COMPLETE
 
 **Objective**: First multi-write operation with atomic transactions.
 
 #### Phase 5A: Expense Creation API
 **Tasks**:
-1. [ ] Create Zod schema for expense input
-2. [ ] Create `POST /api/groups/[groupId]/expenses` endpoint
-3. [ ] Implement equal split calculation with remainder handling
-4. [ ] Use Prisma transaction for atomic writes
-5. [ ] Create `GET /api/groups/[groupId]/expenses` endpoint
+1. [x] Create Zod schema for expense input
+2. [x] Create `POST /api/groups/[groupId]/expenses` endpoint
+3. [x] Implement equal split calculation with remainder handling
+4. [x] Use Prisma transaction for atomic writes
+5. [x] Create `GET /api/groups/[groupId]/expenses` endpoint
 
 **Critical Code - Equal Split Algorithm**:
 ```typescript
@@ -707,24 +707,24 @@ const result = await prisma.$transaction(async (tx) => {
 ```
 
 **Verification Checklist**:
-- [ ] Sum of splits ALWAYS equals expense amount
-- [ ] Remainder cents distributed correctly
-- [ ] Transaction rolls back on error
-- [ ] No partial expense/split creation
+- [x] Sum of splits ALWAYS equals expense amount
+- [x] Remainder cents distributed correctly
+- [x] Transaction rolls back on error
+- [x] No partial expense/split creation
 
 #### Phase 5B: Add Expense UI
 **Tasks**:
-1. [ ] Create Add Expense dialog/modal
-2. [ ] Amount input (display dollars, store cents)
-3. [ ] Payer dropdown (group members)
-4. [ ] Participant checkboxes
-5. [ ] Form validation with error messages
-6. [ ] Optimistic UI update on success
+1. [x] Create Add Expense dialog/modal
+2. [x] Amount input (display dollars, store cents)
+3. [x] Payer dropdown (group members)
+4. [x] Participant checkboxes
+5. [x] Form validation with error messages
+6. [x] Optimistic UI update on success
 
 **Verification Checklist**:
-- [ ] Expense appears immediately after save
-- [ ] Expense persists after page refresh
-- [ ] Validation prevents invalid inputs
+- [x] Expense appears immediately after save
+- [x] Expense persists after page refresh
+- [x] Validation prevents invalid inputs
 
 ---
 

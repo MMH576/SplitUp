@@ -2,10 +2,11 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InviteDialog } from "@/components/groups/invite-dialog";
+import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
+import { formatMoney } from "@/lib/utils/money";
 
 type PageProps = {
   params: Promise<{ groupId: string }>;
@@ -35,7 +36,6 @@ export default async function GroupPage({ params }: PageProps) {
           },
           expenses: {
             orderBy: { createdAt: "desc" },
-            take: 5,
             include: {
               splits: true,
             },
@@ -54,6 +54,13 @@ export default async function GroupPage({ params }: PageProps) {
 
   const { group } = membership;
   const isAdmin = membership.role === "ADMIN";
+
+  // Prepare members data for the AddExpenseDialog
+  const membersForDialog = group.members.map((m) => ({
+    id: m.id,
+    clerkUserId: m.clerkUserId,
+    displayName: m.displayNameSnapshot,
+  }));
 
   return (
     <div className="container py-8">
@@ -74,7 +81,11 @@ export default async function GroupPage({ params }: PageProps) {
         </div>
         <div className="flex gap-2">
           {isAdmin && <InviteDialog groupId={groupId} />}
-          <Button>Add Expense</Button>
+          <AddExpenseDialog
+            groupId={groupId}
+            members={membersForDialog}
+            currentUserId={userId}
+          />
         </div>
       </div>
 
@@ -98,7 +109,11 @@ export default async function GroupPage({ params }: PageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex justify-center">
-                <Button>Add Expense</Button>
+                <AddExpenseDialog
+                  groupId={groupId}
+                  members={membersForDialog}
+                  currentUserId={userId}
+                />
               </CardContent>
             </Card>
           ) : (
@@ -119,7 +134,7 @@ export default async function GroupPage({ params }: PageProps) {
                         </div>
                         <div className="text-right">
                           <div className="font-semibold">
-                            ${(expense.amountCents / 100).toFixed(2)}
+                            {formatMoney(expense.amountCents)}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {new Date(expense.expenseDate).toLocaleDateString()}
@@ -130,11 +145,6 @@ export default async function GroupPage({ params }: PageProps) {
                   </Card>
                 );
               })}
-              {group._count.expenses > 5 && (
-                <p className="text-center text-sm text-muted-foreground py-2">
-                  Showing 5 of {group._count.expenses} expenses
-                </p>
-              )}
             </div>
           )}
         </TabsContent>
