@@ -8,6 +8,8 @@ import { InviteDialog } from "@/components/groups/invite-dialog";
 import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
 import { formatMoney } from "@/lib/utils/money";
 import { calculateGroupBalances } from "@/lib/utils/balances";
+import { calculateSettlements } from "@/lib/utils/settlements";
+import { SettlementPlan } from "@/components/settlements/settlement-plan";
 
 type PageProps = {
   params: Promise<{ groupId: string }>;
@@ -65,6 +67,26 @@ export default async function GroupPage({ params }: PageProps) {
 
   // Calculate balances for the Balances tab
   const balances = await calculateGroupBalances(groupId);
+
+  // Calculate settlement plan for the Settle Up tab
+  const settlements = calculateSettlements(balances);
+
+  // Prepare expense breakdown for the current user's summary
+  const expenseBreakdown = group.expenses.map((expense) => {
+    const payer = group.members.find(
+      (m) => m.clerkUserId === expense.payerClerkUserId
+    );
+    const userSplit = expense.splits.find((s) => s.clerkUserId === userId);
+
+    return {
+      title: expense.title,
+      amountCents: expense.amountCents,
+      payerName: payer?.displayNameSnapshot ?? "Unknown",
+      payerClerkUserId: expense.payerClerkUserId,
+      yourShareCents: userSplit?.shareCents ?? 0,
+      date: expense.expenseDate,
+    };
+  });
 
   return (
     <div className="container py-8">
@@ -241,14 +263,22 @@ export default async function GroupPage({ params }: PageProps) {
 
         {/* Settle Up Tab */}
         <TabsContent value="settle" className="space-y-4">
-          <Card className="border-dashed">
-            <CardHeader className="text-center">
-              <CardTitle>Settle Up</CardTitle>
-              <CardDescription>
-                Settlement plan will be implemented in Phase 7.
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          {group.expenses.length === 0 ? (
+            <Card className="border-dashed">
+              <CardHeader className="text-center">
+                <CardTitle>No expenses yet</CardTitle>
+                <CardDescription>
+                  Add expenses to see settlement options.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
+            <SettlementPlan
+              transfers={settlements}
+              currentUserId={userId}
+              expenseBreakdown={expenseBreakdown}
+            />
+          )}
         </TabsContent>
 
         {/* Settings Tab (Admin only) */}
