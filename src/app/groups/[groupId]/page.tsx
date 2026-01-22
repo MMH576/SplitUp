@@ -89,19 +89,19 @@ export default async function GroupPage({ params }: PageProps) {
   });
 
   return (
-    <div className="container py-8">
+    <div className="container py-6 sm:py-8 px-4 sm:px-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-1">
             <Link href="/groups" className="hover:underline">
               My Groups
             </Link>
             <span>/</span>
-            <span>{group.name}</span>
+            <span className="truncate max-w-[150px] sm:max-w-none">{group.name}</span>
           </div>
-          <h1 className="text-3xl font-bold">{group.name}</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">{group.name}</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             {group.members.length} {group.members.length === 1 ? "member" : "members"} · {group._count.expenses} {group._count.expenses === 1 ? "expense" : "expenses"}
           </p>
         </div>
@@ -117,11 +117,11 @@ export default async function GroupPage({ params }: PageProps) {
 
       {/* Tabs */}
       <Tabs defaultValue="expenses" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
-          <TabsTrigger value="balances">Balances</TabsTrigger>
-          <TabsTrigger value="settle">Settle Up</TabsTrigger>
-          {isAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
+        <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:flex">
+          <TabsTrigger value="expenses" className="text-xs sm:text-sm">Expenses</TabsTrigger>
+          <TabsTrigger value="balances" className="text-xs sm:text-sm">Balances</TabsTrigger>
+          <TabsTrigger value="settle" className="text-xs sm:text-sm">Settle</TabsTrigger>
+          {isAdmin && <TabsTrigger value="settings" className="text-xs sm:text-sm">Settings</TabsTrigger>}
         </TabsList>
 
         {/* Expenses Tab */}

@@ -36,11 +36,11 @@ export default async function GroupsPage() {
   }));
 
   return (
-    <div className="container py-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container py-6 sm:py-8 px-4 sm:px-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold">My Groups</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">My Groups</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Manage your expense sharing groups
           </p>
         </div>

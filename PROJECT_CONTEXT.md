@@ -964,16 +964,16 @@ export function formatMoney(cents: number): string {
 ---
 
 ### Phase 9: UX Polish
-**Status**: NOT STARTED
+**Status**: COMPLETE
 
 **Objective**: Make it feel like a real product.
 
 **Tasks**:
-1. [ ] Add empty states ("No expenses yet")
-2. [ ] Add loading skeletons
-3. [ ] Add toast notifications
-4. [ ] Improve mobile responsiveness
-5. [ ] Add keyboard shortcuts (optional)
+1. [x] Add empty states ("No expenses yet") - Already implemented in groups page, expenses/balances/settle tabs
+2. [x] Add loading skeletons - Added skeleton components with loading.tsx files
+3. [x] Add toast notifications - Already implemented with sonner in all dialogs
+4. [x] Improve mobile responsiveness - Updated navbar, groups page, group detail page with responsive classes
+5. [ ] Add keyboard shortcuts (optional) - Skipped for MVP
 
 ---
 
