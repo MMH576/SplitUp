@@ -22,7 +22,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { Info } from "lucide-react";
 import { dollarsToCents, centsToDollars } from "@/lib/utils/money";
 
 type Member = {
@@ -438,11 +445,36 @@ export function AddExpenseDialog({
                 )}
                 {participantIds.length > 0 && effectiveAmountCents > 0 && (
                   <div className="text-sm space-y-1 pt-2 border-t">
-                    <p className="text-muted-foreground">
-                      ${(perPersonCents / 100).toFixed(2)} per person ×{" "}
-                      {participantIds.length}{" "}
-                      {participantIds.length === 1 ? "person" : "people"}
-                    </p>
+                    {(() => {
+                      const remainder = effectiveAmountCents % participantIds.length;
+                      const hasRemainder = remainder > 0;
+
+                      return (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <span>
+                            ${(perPersonCents / 100).toFixed(2)} per person ×{" "}
+                            {participantIds.length}{" "}
+                            {participantIds.length === 1 ? "person" : "people"}
+                          </span>
+                          {hasRemainder && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[200px]">
+                                  <p className="text-xs">
+                                    This amount doesn&apos;t split evenly. The extra{" "}
+                                    {remainder}¢ will be distributed to{" "}
+                                    {remainder === 1 ? "1 person" : `${remainder} people`}.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {(() => {
                       const payerInSplit = participantIds.includes(payerId);
                       const othersCount = payerInSplit

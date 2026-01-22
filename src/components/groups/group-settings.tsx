@@ -27,7 +27,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Pencil, Trash2, LogOut, UserMinus } from "lucide-react";
+import { Pencil, Trash2, LogOut, UserMinus, Shield, ShieldOff } from "lucide-react";
 
 type Member = {
   id: string;
@@ -59,6 +59,7 @@ export function GroupSettings({
   const [isDeleting, setIsDeleting] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [updatingRoleMemberId, setUpdatingRoleMemberId] = useState<string | null>(null);
 
   const currentMember = members.find((m) => m.clerkUserId === currentUserId);
   const adminCount = members.filter((m) => m.role === "ADMIN").length;
@@ -114,6 +115,36 @@ export function GroupSettings({
         error instanceof Error ? error.message : "Failed to delete group"
       );
       setIsDeleting(false);
+    }
+  };
+
+  const handleUpdateRole = async (memberId: string, newRole: "ADMIN" | "MEMBER") => {
+    setUpdatingRoleMemberId(memberId);
+    try {
+      const response = await fetch(
+        `/api/groups/${groupId}/members/${memberId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: newRole }),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update role");
+      }
+
+      toast.success(
+        newRole === "ADMIN" ? "Member promoted to admin" : "Admin demoted to member"
+      );
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update role"
+      );
+    } finally {
+      setUpdatingRoleMemberId(null);
     }
   };
 
@@ -268,8 +299,10 @@ export function GroupSettings({
           <div className="space-y-2">
             {members.map((member) => {
               const isCurrentUser = member.clerkUserId === currentUserId;
-              const canRemove = isAdmin && !isCurrentUser;
+              const canManage = isAdmin && !isCurrentUser;
               const isRemoving = removingMemberId === member.id;
+              const isUpdatingRole = updatingRoleMemberId === member.id;
+              const canDemoteSelf = isAdmin && isCurrentUser && adminCount > 1;
 
               return (
                 <div
@@ -296,7 +329,46 @@ export function GroupSettings({
                         Admin
                       </span>
                     )}
-                    {canRemove && (
+                    {/* Promote to admin */}
+                    {canManage && member.role === "MEMBER" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-muted-foreground hover:text-primary"
+                        onClick={() => handleUpdateRole(member.id, "ADMIN")}
+                        disabled={isUpdatingRole}
+                        title="Make admin"
+                      >
+                        <Shield className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {/* Demote from admin */}
+                    {canManage && member.role === "ADMIN" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-muted-foreground hover:text-amber-600"
+                        onClick={() => handleUpdateRole(member.id, "MEMBER")}
+                        disabled={isUpdatingRole}
+                        title="Remove admin"
+                      >
+                        <ShieldOff className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {/* Self-demote option when there are other admins */}
+                    {canDemoteSelf && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-muted-foreground hover:text-amber-600"
+                        onClick={() => handleUpdateRole(member.id, "MEMBER")}
+                        disabled={isUpdatingRole}
+                        title="Remove your admin role"
+                      >
+                        <ShieldOff className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canManage && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
@@ -382,15 +454,27 @@ export function GroupSettings({
       )}
 
       {/* Warning for only admin */}
-      {isOnlyAdmin && (
+      {isOnlyAdmin && members.length > 1 && (
         <Card className="border-amber-200 bg-amber-50">
           <CardHeader>
             <CardTitle className="text-base text-amber-800">
               You are the only admin
             </CardTitle>
             <CardDescription className="text-amber-700">
-              You cannot leave this group until you make another member an admin
-              or delete the group.
+              To leave this group, first promote another member to admin using
+              the <Shield className="h-3 w-3 inline mx-1" /> button above.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+      {isOnlyAdmin && members.length === 1 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="text-base text-amber-800">
+              You are the only member
+            </CardTitle>
+            <CardDescription className="text-amber-700">
+              Invite others to join or delete the group if you no longer need it.
             </CardDescription>
           </CardHeader>
         </Card>

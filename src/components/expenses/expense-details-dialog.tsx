@@ -6,6 +6,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import { formatMoney } from "@/lib/utils/money";
 
 type Split = {
@@ -97,10 +104,34 @@ export function ExpenseDetailsDialog({
           {/* Split Breakdown */}
           <div className="py-2">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">
-                Split between {expense.splits.length}{" "}
-                {expense.splits.length === 1 ? "person" : "people"}
-              </p>
+              <div className="flex items-center gap-1">
+                <p className="text-sm text-muted-foreground">
+                  Split between {expense.splits.length}{" "}
+                  {expense.splits.length === 1 ? "person" : "people"}
+                </p>
+                {expense.splitType === "EQUAL" && (() => {
+                  const remainder = expense.amountCents % expense.splits.length;
+                  if (remainder > 0) {
+                    return (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[200px]">
+                            <p className="text-xs">
+                              This amount didn&apos;t split evenly. The extra{" "}
+                              {remainder}¢ was distributed to{" "}
+                              {remainder === 1 ? "1 person" : `${remainder} people`}.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
               {expense.splitType && (
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${

@@ -1,10 +1,73 @@
 import { prisma } from "@/lib/prisma";
 import { requireGroupMember, requireGroupAdmin } from "@/lib/auth";
 import { handleApiError, apiSuccess, apiError } from "@/lib/api-utils";
+import { z } from "zod";
 
 type RouteParams = {
   params: Promise<{ groupId: string; memberId: string }>;
 };
+
+const updateMemberSchema = z.object({
+  role: z.enum(["ADMIN", "MEMBER"]),
+});
+
+/**
+ * PATCH /api/groups/[groupId]/members/[memberId]
+ * Update a member's role (admin only)
+ */
+export async function PATCH(request: Request, { params }: RouteParams) {
+  try {
+    const { groupId, memberId } = await params;
+    const { membership } = await requireGroupAdmin(groupId);
+
+    const body = await request.json();
+    const validated = updateMemberSchema.parse(body);
+
+    // Find the target member
+    const targetMember = await prisma.groupMember.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!targetMember) {
+      return apiError("Member not found", 404);
+    }
+
+    if (targetMember.groupId !== groupId) {
+      return apiError("Member not found in this group", 404);
+    }
+
+    // Prevent demoting yourself if you're the only admin
+    if (
+      validated.role === "MEMBER" &&
+      targetMember.role === "ADMIN" &&
+      targetMember.id === membership.id
+    ) {
+      const adminCount = await prisma.groupMember.count({
+        where: { groupId, role: "ADMIN" },
+      });
+
+      if (adminCount <= 1) {
+        return apiError(
+          "You cannot demote yourself. Promote another member first.",
+          400
+        );
+      }
+    }
+
+    // Update the role
+    const updated = await prisma.groupMember.update({
+      where: { id: memberId },
+      data: { role: validated.role },
+    });
+
+    return apiSuccess({
+      id: updated.id,
+      role: updated.role,
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
 
 /**
  * DELETE /api/groups/[groupId]/members/[memberId]

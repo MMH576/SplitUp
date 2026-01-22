@@ -136,9 +136,17 @@ export function SettlementPlan({
         throw new Error("Failed to mark as completed");
       }
 
-      toast.success("Payment recorded!");
       setConfirmTransfer(null);
       router.refresh();
+
+      // Show success toast with undo option
+      toast.success("Payment recorded", {
+        action: {
+          label: "Undo",
+          onClick: () => handleUndoSettlement(settlementId),
+        },
+        duration: 8000,
+      });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to record payment"

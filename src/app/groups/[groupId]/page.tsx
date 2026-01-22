@@ -3,10 +3,10 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GroupTabs, TabsContent, TabsList, TabsTrigger } from "@/components/groups/group-tabs";
 import { InviteDialog } from "@/components/groups/invite-dialog";
 import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
-import { ExpenseCard } from "@/components/expenses/expense-card";
+import { ExpenseList } from "@/components/expenses/expense-list";
 import { formatMoney } from "@/lib/utils/money";
 import { calculateGroupBalances } from "@/lib/utils/balances";
 import { calculateSettlements } from "@/lib/utils/settlements";
@@ -15,10 +15,18 @@ import { GroupSettings } from "@/components/groups/group-settings";
 
 type PageProps = {
   params: Promise<{ groupId: string }>;
+  searchParams: Promise<{ tab?: string }>;
 };
 
-export default async function GroupPage({ params }: PageProps) {
+const validTabs = ["expenses", "balances", "settle", "settings"] as const;
+type TabValue = (typeof validTabs)[number];
+
+export default async function GroupPage({ params, searchParams }: PageProps) {
   const { groupId } = await params;
+  const { tab } = await searchParams;
+  const activeTab: TabValue = validTabs.includes(tab as TabValue)
+    ? (tab as TabValue)
+    : "expenses";
   const { userId } = await auth();
 
   if (!userId) {
@@ -141,7 +149,7 @@ export default async function GroupPage({ params }: PageProps) {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="expenses" className="space-y-4">
+      <GroupTabs defaultValue={activeTab} groupId={groupId}>
         <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:flex">
           <TabsTrigger value="expenses" className="text-xs sm:text-sm">Expenses</TabsTrigger>
           <TabsTrigger value="balances" className="text-xs sm:text-sm">Balances</TabsTrigger>
@@ -168,28 +176,23 @@ export default async function GroupPage({ params }: PageProps) {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-2">
-              {group.expenses.map((expense) => (
-                <ExpenseCard
-                  key={expense.id}
-                  expense={{
-                    id: expense.id,
-                    title: expense.title,
-                    amountCents: expense.amountCents,
-                    payerClerkUserId: expense.payerClerkUserId,
-                    expenseDate: expense.expenseDate,
-                    splitType: expense.splitType,
-                    splits: expense.splits.map((s) => ({
-                      clerkUserId: s.clerkUserId,
-                      shareCents: s.shareCents,
-                    })),
-                  }}
-                  groupId={groupId}
-                  members={membersForDialog}
-                  currentUserId={userId}
-                />
-              ))}
-            </div>
+            <ExpenseList
+              expenses={group.expenses.map((expense) => ({
+                id: expense.id,
+                title: expense.title,
+                amountCents: expense.amountCents,
+                payerClerkUserId: expense.payerClerkUserId,
+                expenseDate: expense.expenseDate,
+                splitType: expense.splitType,
+                splits: expense.splits.map((s) => ({
+                  clerkUserId: s.clerkUserId,
+                  shareCents: s.shareCents,
+                })),
+              }))}
+              groupId={groupId}
+              members={membersForDialog}
+              currentUserId={userId}
+            />
           )}
         </TabsContent>
 
@@ -317,7 +320,7 @@ export default async function GroupPage({ params }: PageProps) {
             isAdmin={isAdmin}
           />
         </TabsContent>
-      </Tabs>
+      </GroupTabs>
     </div>
   );
 }
