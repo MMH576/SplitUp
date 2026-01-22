@@ -2,7 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { requireGroupMember } from "@/lib/auth";
 import { handleApiError, apiSuccess, apiError } from "@/lib/api-utils";
 import { createExpenseSchema } from "@/lib/validations/expense";
-import { calculateEqualSplit, verifySplitsTotal } from "@/lib/utils/splits";
+import {
+  calculateEqualSplit,
+  processCustomSplits,
+  verifySplitsTotal,
+} from "@/lib/utils/splits";
 
 type RouteParams = {
   params: Promise<{ groupId: string }>;
@@ -31,6 +35,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         title: e.title,
         amountCents: e.amountCents,
         payerClerkUserId: e.payerClerkUserId,
+        splitType: e.splitType,
         category: e.category,
         expenseDate: e.expenseDate,
         createdAt: e.createdAt,
@@ -47,12 +52,12 @@ export async function GET(request: Request, { params }: RouteParams) {
 
 /**
  * POST /api/groups/[groupId]/expenses
- * Create a new expense with equal split (requires membership)
+ * Create a new expense with equal or custom split (requires membership)
  */
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { groupId } = await params;
-    const { userId } = await requireGroupMember(groupId);
+    await requireGroupMember(groupId);
 
     const body = await request.json();
     const validated = createExpenseSchema.parse(body);
@@ -71,26 +76,46 @@ export async function POST(request: Request, { params }: RouteParams) {
       return apiError("Payer is not a member of this group", 400);
     }
 
+    // Get participant IDs based on split type
+    const participantIds =
+      validated.splitType === "EQUAL"
+        ? validated.participantIds
+        : validated.customSplits.map((s) => s.clerkUserId);
+
     // Verify all participants are group members
     const participantMemberships = await prisma.groupMember.findMany({
       where: {
         groupId,
-        clerkUserId: { in: validated.participantIds },
+        clerkUserId: { in: participantIds },
       },
     });
 
-    if (participantMemberships.length !== validated.participantIds.length) {
-      return apiError("One or more participants are not members of this group", 400);
+    if (participantMemberships.length !== participantIds.length) {
+      return apiError(
+        "One or more participants are not members of this group",
+        400
+      );
     }
 
-    // Calculate equal split
-    const splits = calculateEqualSplit(
-      validated.amountCents,
-      validated.participantIds
-    );
+    // For CUSTOM splits, calculate total from individual amounts
+    // For EQUAL splits, use the provided amount
+    let finalAmountCents: number;
+    let splits;
+
+    if (validated.splitType === "EQUAL") {
+      finalAmountCents = validated.amountCents;
+      splits = calculateEqualSplit(finalAmountCents, validated.participantIds);
+    } else {
+      // Auto-calculate total from custom splits
+      finalAmountCents = validated.customSplits.reduce(
+        (sum, s) => sum + s.shareCents,
+        0
+      );
+      splits = processCustomSplits(finalAmountCents, validated.customSplits);
+    }
 
     // Verify splits sum correctly (sanity check)
-    if (!verifySplitsTotal(splits, validated.amountCents)) {
+    if (!verifySplitsTotal(splits, finalAmountCents)) {
       return apiError("Split calculation error - amounts don't match", 500);
     }
 
@@ -101,8 +126,9 @@ export async function POST(request: Request, { params }: RouteParams) {
         data: {
           groupId,
           title: validated.title,
-          amountCents: validated.amountCents,
+          amountCents: finalAmountCents,
           payerClerkUserId: validated.payerClerkUserId,
+          splitType: validated.splitType,
           category: validated.category,
           expenseDate: validated.expenseDate
             ? new Date(validated.expenseDate)
@@ -132,6 +158,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         title: expense!.title,
         amountCents: expense!.amountCents,
         payerClerkUserId: expense!.payerClerkUserId,
+        splitType: expense!.splitType,
         splits: expense!.splits.map((s) => ({
           clerkUserId: s.clerkUserId,
           shareCents: s.shareCents,

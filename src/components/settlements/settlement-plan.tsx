@@ -4,6 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatMoney } from "@/lib/utils/money";
 import { toast } from "sonner";
 
@@ -54,6 +64,7 @@ export function SettlementPlan({
   const router = useRouter();
   const [copying, setCopying] = useState(false);
   const [markingPaid, setMarkingPaid] = useState<string | null>(null);
+  const [confirmTransfer, setConfirmTransfer] = useState<Transfer | null>(null);
 
   const handleCopySummary = async () => {
     if (transfers.length === 0) return;
@@ -126,6 +137,7 @@ export function SettlementPlan({
       }
 
       toast.success("Payment recorded!");
+      setConfirmTransfer(null);
       router.refresh();
     } catch (error) {
       toast.error(
@@ -258,7 +270,7 @@ export function SettlementPlan({
                       <Button
                         size="sm"
                         variant={isCurrentUserPaying ? "default" : "outline"}
-                        onClick={() => handleMarkAsPaid(transfer)}
+                        onClick={() => setConfirmTransfer(transfer)}
                         disabled={isMarking}
                       >
                         {isMarking ? "Recording..." : "Mark Paid"}
@@ -287,6 +299,53 @@ export function SettlementPlan({
         currentUserId={currentUserId}
         expenseBreakdown={expenseBreakdown}
       />
+
+      {/* Confirm Payment Dialog */}
+      <AlertDialog
+        open={confirmTransfer !== null}
+        onOpenChange={(open) => !open && setConfirmTransfer(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm payment</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmTransfer && (
+                <>
+                  Mark that{" "}
+                  <span className="font-medium text-foreground">
+                    {confirmTransfer.fromDisplayName}
+                    {confirmTransfer.fromClerkUserId === currentUserId && " (you)"}
+                  </span>{" "}
+                  paid{" "}
+                  <span className="font-medium text-foreground">
+                    {confirmTransfer.toDisplayName}
+                    {confirmTransfer.toClerkUserId === currentUserId && " (you)"}
+                  </span>{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatMoney(confirmTransfer.amountCents)}
+                  </span>
+                  ?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={markingPaid !== null}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmTransfer) {
+                  handleMarkAsPaid(confirmTransfer);
+                }
+              }}
+              disabled={markingPaid !== null}
+            >
+              {markingPaid !== null ? "Recording..." : "Confirm Payment"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

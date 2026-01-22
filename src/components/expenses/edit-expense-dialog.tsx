@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +24,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { dollarsToCents, centsToDollars } from "@/lib/utils/money";
 
+type Split = {
+  clerkUserId: string;
+  shareCents: number;
+};
+
 type Member = {
   id: string;
   clerkUserId: string;
@@ -35,57 +39,113 @@ type SplitType = "EQUAL" | "CUSTOM";
 
 type CustomSplitEntry = {
   clerkUserId: string;
-  amount: string; // Keep as string for input handling
+  amount: string;
 };
 
-type AddExpenseDialogProps = {
+type EditExpenseDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  expense: {
+    id: string;
+    title: string;
+    amountCents: number;
+    payerClerkUserId: string;
+    expenseDate: Date;
+    splitType?: SplitType;
+    splits: Split[];
+  };
   groupId: string;
   members: Member[];
   currentUserId: string;
 };
 
-export function AddExpenseDialog({
+export function EditExpenseDialog({
+  open,
+  onOpenChange,
+  expense,
   groupId,
   members,
   currentUserId,
-}: AddExpenseDialogProps) {
+}: EditExpenseDialogProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Form state
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [payerId, setPayerId] = useState(currentUserId);
+  const [title, setTitle] = useState(expense.title);
+  const [amount, setAmount] = useState(
+    centsToDollars(expense.amountCents).toString()
+  );
+  const [payerId, setPayerId] = useState(expense.payerClerkUserId);
   const [expenseDate, setExpenseDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date(expense.expenseDate).toISOString().split("T")[0]
   );
 
-  // Split type state
-  const [splitType, setSplitType] = useState<SplitType>("EQUAL");
+  // Determine initial split type from expense data
+  const getInitialSplitType = (): SplitType => {
+    if (expense.splitType) return expense.splitType;
+    // Legacy expenses without splitType - check if splits are equal
+    if (expense.splits.length === 0) return "EQUAL";
+    const perPerson = Math.floor(
+      expense.amountCents / expense.splits.length
+    );
+    const isEqual = expense.splits.every(
+      (s) => Math.abs(s.shareCents - perPerson) <= 1
+    );
+    return isEqual ? "EQUAL" : "CUSTOM";
+  };
+
+  const [splitType, setSplitType] = useState<SplitType>(getInitialSplitType());
 
   // Equal split state
   const [participantIds, setParticipantIds] = useState<string[]>(
-    members.map((m) => m.clerkUserId)
+    expense.splits.map((s) => s.clerkUserId)
   );
 
   // Custom split state
   const [customSplits, setCustomSplits] = useState<CustomSplitEntry[]>(
-    members.map((m) => ({ clerkUserId: m.clerkUserId, amount: "" }))
+    members.map((m) => {
+      const existingSplit = expense.splits.find(
+        (s) => s.clerkUserId === m.clerkUserId
+      );
+      return {
+        clerkUserId: m.clerkUserId,
+        amount: existingSplit
+          ? centsToDollars(existingSplit.shareCents).toFixed(2)
+          : "",
+      };
+    })
   );
 
-  // Validation state
-  const [errors, setErrors] = useState<{
-    title?: string;
-    amount?: string;
-    participants?: string;
-    customSplits?: string;
-  }>({});
+  // Reset form when expense changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      setTitle(expense.title);
+      setAmount(centsToDollars(expense.amountCents).toString());
+      setPayerId(expense.payerClerkUserId);
+      setExpenseDate(
+        new Date(expense.expenseDate).toISOString().split("T")[0]
+      );
+      setSplitType(getInitialSplitType());
+      setParticipantIds(expense.splits.map((s) => s.clerkUserId));
+      setCustomSplits(
+        members.map((m) => {
+          const existingSplit = expense.splits.find(
+            (s) => s.clerkUserId === m.clerkUserId
+          );
+          return {
+            clerkUserId: m.clerkUserId,
+            amount: existingSplit
+              ? centsToDollars(existingSplit.shareCents).toFixed(2)
+              : "",
+          };
+        })
+      );
+    }
+  }, [open, expense, members]);
 
   const handleParticipantToggle = (clerkUserId: string, checked: boolean) => {
     if (checked) {
       setParticipantIds((prev) => [...prev, clerkUserId]);
-      setErrors((prev) => ({ ...prev, participants: undefined }));
     } else {
       setParticipantIds((prev) => prev.filter((id) => id !== clerkUserId));
     }
@@ -93,7 +153,6 @@ export function AddExpenseDialog({
 
   const selectAllParticipants = () => {
     setParticipantIds(members.map((m) => m.clerkUserId));
-    setErrors((prev) => ({ ...prev, participants: undefined }));
   };
 
   const clearAllParticipants = () => {
@@ -106,7 +165,6 @@ export function AddExpenseDialog({
         s.clerkUserId === clerkUserId ? { ...s, amount: value } : s
       )
     );
-    setErrors((prev) => ({ ...prev, customSplits: undefined }));
   };
 
   const clearCustomSplits = () => {
@@ -115,41 +173,34 @@ export function AddExpenseDialog({
     );
   };
 
-  const validateForm = () => {
-    const newErrors: typeof errors = {};
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
     if (!title.trim()) {
-      newErrors.title = "Description is required";
+      toast.error("Please enter a title");
+      return;
     }
 
     if (splitType === "EQUAL") {
-      // For equal splits, user must enter a total amount
       const amountCents = dollarsToCents(parseFloat(amount));
       if (isNaN(amountCents) || amountCents <= 0) {
-        newErrors.amount = "Enter a valid amount greater than $0";
+        toast.error("Please enter a valid amount");
+        return;
       }
       if (participantIds.length === 0) {
-        newErrors.participants = "Select at least one participant";
+        toast.error("Please select at least one participant");
+        return;
       }
-    } else {
-      // For custom splits, total is auto-calculated from individual amounts
+    }
+
+    if (splitType === "CUSTOM") {
       const nonEmptySplits = customSplits.filter(
         (s) => s.amount && parseFloat(s.amount) > 0
       );
       if (nonEmptySplits.length === 0) {
-        newErrors.customSplits = "Enter amounts for at least one person";
+        toast.error("Enter amounts for at least one person");
+        return;
       }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
     }
 
     setIsLoading(true);
@@ -168,7 +219,7 @@ export function AddExpenseDialog({
           expenseDate: new Date(expenseDate).toISOString(),
         };
       } else {
-        // Custom split - only include non-zero amounts, total is auto-calculated
+        // Custom split - total is auto-calculated from individual amounts
         const nonEmptySplits = customSplits
           .filter((s) => s.amount && parseFloat(s.amount) > 0)
           .map((s) => ({
@@ -176,7 +227,6 @@ export function AddExpenseDialog({
             shareCents: dollarsToCents(parseFloat(s.amount)),
           }));
 
-        // Calculate total from individual splits
         const calculatedTotal = nonEmptySplits.reduce(
           (sum, s) => sum + s.shareCents,
           0
@@ -192,48 +242,30 @@ export function AddExpenseDialog({
         };
       }
 
-      const response = await fetch(`/api/groups/${groupId}/expenses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const response = await fetch(
+        `/api/groups/${groupId}/expenses/${expense.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to add expense");
+        throw new Error(result.error || "Failed to update expense");
       }
 
-      toast.success("Expense added!");
-      setOpen(false);
-      resetForm();
+      toast.success("Expense updated!");
+      onOpenChange(false);
       router.refresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to add expense"
+        error instanceof Error ? error.message : "Failed to update expense"
       );
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setTitle("");
-    setAmount("");
-    setPayerId(currentUserId);
-    setParticipantIds(members.map((m) => m.clerkUserId));
-    setCustomSplits(
-      members.map((m) => ({ clerkUserId: m.clerkUserId, amount: "" }))
-    );
-    setExpenseDate(new Date().toISOString().split("T")[0]);
-    setSplitType("EQUAL");
-    setErrors({});
-  };
-
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-    if (!newOpen) {
-      resetForm();
     }
   };
 
@@ -253,74 +285,52 @@ export function AddExpenseDialog({
       : 0;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>Add Expense</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add an expense</DialogTitle>
+            <DialogTitle>Edit expense</DialogTitle>
             <DialogDescription>
-              Record who paid and how to split the cost.
+              Update the expense details. Changes will recalculate all balances.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             {/* Title */}
             <div className="grid gap-2">
-              <Label htmlFor="title">Description</Label>
+              <Label htmlFor="edit-title">Description</Label>
               <Input
-                id="title"
+                id="edit-title"
                 placeholder="e.g., Dinner, Groceries, Uber"
                 value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (e.target.value.trim()) {
-                    setErrors((prev) => ({ ...prev, title: undefined }));
-                  }
-                }}
+                onChange={(e) => setTitle(e.target.value)}
                 disabled={isLoading}
                 autoFocus
-                className={errors.title ? "border-destructive" : ""}
               />
-              {errors.title && (
-                <p className="text-sm text-destructive">{errors.title}</p>
-              )}
             </div>
 
             {/* Amount - only shown for EQUAL splits */}
             {splitType === "EQUAL" && (
               <div className="grid gap-2">
-                <Label htmlFor="amount">Total Amount ($)</Label>
+                <Label htmlFor="edit-amount">Total Amount ($)</Label>
                 <Input
-                  id="amount"
+                  id="edit-amount"
                   type="number"
                   step="0.01"
                   min="0.01"
                   placeholder="0.00"
                   value={amount}
-                  onChange={(e) => {
-                    setAmount(e.target.value);
-                    const cents = dollarsToCents(parseFloat(e.target.value));
-                    if (!isNaN(cents) && cents > 0) {
-                      setErrors((prev) => ({ ...prev, amount: undefined }));
-                    }
-                  }}
+                  onChange={(e) => setAmount(e.target.value)}
                   disabled={isLoading}
-                  className={errors.amount ? "border-destructive" : ""}
                 />
-                {errors.amount && (
-                  <p className="text-sm text-destructive">{errors.amount}</p>
-                )}
               </div>
             )}
 
             {/* Date */}
             <div className="grid gap-2">
-              <Label htmlFor="expense-date">Date</Label>
+              <Label htmlFor="edit-date">Date</Label>
               <Input
-                id="expense-date"
+                id="edit-date"
                 type="date"
                 value={expenseDate}
                 onChange={(e) => setExpenseDate(e.target.value)}
@@ -400,18 +410,14 @@ export function AddExpenseDialog({
                     </Button>
                   </div>
                 </div>
-                <div
-                  className={`border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto ${
-                    errors.participants ? "border-destructive" : ""
-                  }`}
-                >
+                <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
                   {members.map((member) => (
                     <div
                       key={member.clerkUserId}
                       className="flex items-center space-x-2"
                     >
                       <Checkbox
-                        id={`participant-${member.clerkUserId}`}
+                        id={`edit-participant-${member.clerkUserId}`}
                         checked={participantIds.includes(member.clerkUserId)}
                         onCheckedChange={(checked) =>
                           handleParticipantToggle(
@@ -422,7 +428,7 @@ export function AddExpenseDialog({
                         disabled={isLoading}
                       />
                       <label
-                        htmlFor={`participant-${member.clerkUserId}`}
+                        htmlFor={`edit-participant-${member.clerkUserId}`}
                         className="text-sm cursor-pointer flex-1"
                       >
                         {member.displayName}
@@ -431,45 +437,17 @@ export function AddExpenseDialog({
                     </div>
                   ))}
                 </div>
-                {errors.participants && (
-                  <p className="text-sm text-destructive">
-                    {errors.participants}
+                {participantIds.length > 0 && effectiveAmountCents > 0 && (
+                  <p className="text-sm text-muted-foreground pt-1">
+                    ${(perPersonCents / 100).toFixed(2)} per person ×{" "}
+                    {participantIds.length}{" "}
+                    {participantIds.length === 1 ? "person" : "people"}
                   </p>
                 )}
-                {participantIds.length > 0 && effectiveAmountCents > 0 && (
-                  <div className="text-sm space-y-1 pt-2 border-t">
-                    <p className="text-muted-foreground">
-                      ${(perPersonCents / 100).toFixed(2)} per person ×{" "}
-                      {participantIds.length}{" "}
-                      {participantIds.length === 1 ? "person" : "people"}
-                    </p>
-                    {(() => {
-                      const payerInSplit = participantIds.includes(payerId);
-                      const othersCount = payerInSplit
-                        ? participantIds.length - 1
-                        : participantIds.length;
-                      const payerName =
-                        members.find((m) => m.clerkUserId === payerId)
-                          ?.displayName || "Payer";
-
-                      if (othersCount === 0) {
-                        return (
-                          <p className="text-xs text-muted-foreground">
-                            {payerName} paid for themselves - no one owes
-                            anything
-                          </p>
-                        );
-                      }
-
-                      const owedAmount = perPersonCents * othersCount;
-                      return (
-                        <p className="text-xs font-medium text-primary">
-                          {othersCount} {othersCount === 1 ? "person owes" : "people owe"}{" "}
-                          {payerName} ${(owedAmount / 100).toFixed(2)} total
-                        </p>
-                      );
-                    })()}
-                  </div>
+                {participantIds.length === 0 && (
+                  <p className="text-sm text-destructive">
+                    Select at least one participant
+                  </p>
                 )}
               </div>
             )}
@@ -492,11 +470,7 @@ export function AddExpenseDialog({
                 <p className="text-xs text-muted-foreground -mt-1">
                   Enter what each person owes. Total will be calculated automatically.
                 </p>
-                <div
-                  className={`border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto ${
-                    errors.customSplits ? "border-destructive" : ""
-                  }`}
-                >
+                <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
                   {members.map((member) => {
                     const split = customSplits.find(
                       (s) => s.clerkUserId === member.clerkUserId
@@ -511,7 +485,9 @@ export function AddExpenseDialog({
                           {member.clerkUserId === currentUserId && " (you)"}
                         </span>
                         <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">$</span>
+                          <span className="text-sm text-muted-foreground">
+                            $
+                          </span>
                           <Input
                             type="number"
                             step="0.01"
@@ -532,11 +508,6 @@ export function AddExpenseDialog({
                     );
                   })}
                 </div>
-                {errors.customSplits && (
-                  <p className="text-sm text-destructive">
-                    {errors.customSplits}
-                  </p>
-                )}
                 {/* Show auto-calculated total */}
                 <div className="text-sm pt-2 border-t">
                   <div className="flex justify-between items-center">
@@ -559,13 +530,13 @@ export function AddExpenseDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Adding..." : "Add Expense"}
+              {isLoading ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
         </form>

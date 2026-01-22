@@ -38,6 +38,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     return apiSuccess(
       {
+        id: invite.id,
         token: invite.token,
         expiresAt: invite.expiresAt,
       },

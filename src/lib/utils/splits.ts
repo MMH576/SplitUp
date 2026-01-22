@@ -1,17 +1,29 @@
 /**
- * Equal Split Calculation Utility
+ * Split Calculation Utilities
  *
- * Handles the math of splitting an expense equally among participants.
+ * Handles the math of splitting expenses among participants.
+ * Supports both equal splits and custom amount splits.
  * Uses integer cents to avoid floating point errors.
  *
- * Example: $10.00 (1000 cents) split 3 ways:
+ * Example (Equal): $10.00 (1000 cents) split 3 ways:
  * - Base share: floor(1000/3) = 333 cents
  * - Remainder: 1000 % 3 = 1 cent
  * - Result: [334, 333, 333] cents (first person gets extra cent)
  * - Sum: 334 + 333 + 333 = 1000 ✓
+ *
+ * Example (Custom): $100.00 groceries paid by Alice:
+ * - Alice's items: $40.00 (4000 cents)
+ * - Bob's items: $35.00 (3500 cents)
+ * - Carol's items: $25.00 (2500 cents)
+ * - Sum: 4000 + 3500 + 2500 = 10000 ✓
  */
 
 export interface SplitResult {
+  clerkUserId: string;
+  shareCents: number;
+}
+
+export interface CustomSplitInput {
   clerkUserId: string;
   shareCents: number;
 }
@@ -48,6 +60,55 @@ export function calculateEqualSplit(
     clerkUserId: id,
     // First 'remainder' participants get +1 cent
     shareCents: baseShare + (index < remainder ? 1 : 0),
+  }));
+}
+
+/**
+ * Process custom splits for an expense.
+ * Validates that splits sum to the expected total.
+ *
+ * @param amountCents - Total amount in cents (must be positive integer)
+ * @param customSplits - Array of custom split entries with userId and amount
+ * @returns Array of split results
+ * @throws Error if splits don't sum to total or invalid data
+ */
+export function processCustomSplits(
+  amountCents: number,
+  customSplits: CustomSplitInput[]
+): SplitResult[] {
+  if (customSplits.length === 0) {
+    throw new Error("At least one participant is required");
+  }
+
+  if (amountCents <= 0 || !Number.isInteger(amountCents)) {
+    throw new Error("Amount must be a positive integer");
+  }
+
+  // Validate each split
+  for (const split of customSplits) {
+    if (split.shareCents < 0 || !Number.isInteger(split.shareCents)) {
+      throw new Error("Each share must be a non-negative integer");
+    }
+  }
+
+  // Verify sum equals total
+  const totalSplits = customSplits.reduce((sum, s) => sum + s.shareCents, 0);
+  if (totalSplits !== amountCents) {
+    throw new Error(
+      `Custom splits (${totalSplits}) must equal total amount (${amountCents})`
+    );
+  }
+
+  // Check for duplicate user IDs
+  const userIds = customSplits.map((s) => s.clerkUserId);
+  const uniqueIds = new Set(userIds);
+  if (uniqueIds.size !== userIds.length) {
+    throw new Error("Duplicate participant IDs are not allowed");
+  }
+
+  return customSplits.map((split) => ({
+    clerkUserId: split.clerkUserId,
+    shareCents: split.shareCents,
   }));
 }
 

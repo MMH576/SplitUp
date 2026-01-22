@@ -6,10 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InviteDialog } from "@/components/groups/invite-dialog";
 import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
+import { ExpenseCard } from "@/components/expenses/expense-card";
 import { formatMoney } from "@/lib/utils/money";
 import { calculateGroupBalances } from "@/lib/utils/balances";
 import { calculateSettlements } from "@/lib/utils/settlements";
 import { SettlementPlan } from "@/components/settlements/settlement-plan";
+import { GroupSettings } from "@/components/groups/group-settings";
 
 type PageProps = {
   params: Promise<{ groupId: string }>;
@@ -144,7 +146,7 @@ export default async function GroupPage({ params }: PageProps) {
           <TabsTrigger value="expenses" className="text-xs sm:text-sm">Expenses</TabsTrigger>
           <TabsTrigger value="balances" className="text-xs sm:text-sm">Balances</TabsTrigger>
           <TabsTrigger value="settle" className="text-xs sm:text-sm">Settle</TabsTrigger>
-          {isAdmin && <TabsTrigger value="settings" className="text-xs sm:text-sm">Settings</TabsTrigger>}
+          <TabsTrigger value="settings" className="text-xs sm:text-sm">Settings</TabsTrigger>
         </TabsList>
 
         {/* Expenses Tab */}
@@ -167,33 +169,26 @@ export default async function GroupPage({ params }: PageProps) {
             </Card>
           ) : (
             <div className="space-y-2">
-              {group.expenses.map((expense) => {
-                const payer = group.members.find(
-                  (m) => m.clerkUserId === expense.payerClerkUserId
-                );
-                return (
-                  <Card key={expense.id}>
-                    <CardHeader className="py-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-base">{expense.title}</CardTitle>
-                          <CardDescription>
-                            Paid by {payer?.displayNameSnapshot ?? "Unknown"} · {expense.splits.length} {expense.splits.length === 1 ? "person" : "people"}
-                          </CardDescription>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold">
-                            {formatMoney(expense.amountCents)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(expense.expenseDate).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                );
-              })}
+              {group.expenses.map((expense) => (
+                <ExpenseCard
+                  key={expense.id}
+                  expense={{
+                    id: expense.id,
+                    title: expense.title,
+                    amountCents: expense.amountCents,
+                    payerClerkUserId: expense.payerClerkUserId,
+                    expenseDate: expense.expenseDate,
+                    splitType: expense.splitType,
+                    splits: expense.splits.map((s) => ({
+                      clerkUserId: s.clerkUserId,
+                      shareCents: s.shareCents,
+                    })),
+                  }}
+                  groupId={groupId}
+                  members={membersForDialog}
+                  currentUserId={userId}
+                />
+              ))}
             </div>
           )}
         </TabsContent>
@@ -306,41 +301,22 @@ export default async function GroupPage({ params }: PageProps) {
           )}
         </TabsContent>
 
-        {/* Settings Tab (Admin only) */}
-        {isAdmin && (
-          <TabsContent value="settings" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Group Members</CardTitle>
-                <CardDescription>
-                  People who are part of this group
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {group.members.map((member) => (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between py-2 border-b last:border-0"
-                    >
-                      <div>
-                        <div className="font-medium">{member.displayNameSnapshot}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Joined {new Date(member.joinedAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      {member.role === "ADMIN" && (
-                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="space-y-4">
+          <GroupSettings
+            groupId={groupId}
+            groupName={group.name}
+            members={group.members.map((m) => ({
+              id: m.id,
+              clerkUserId: m.clerkUserId,
+              displayName: m.displayNameSnapshot,
+              role: m.role,
+              joinedAt: m.joinedAt,
+            }))}
+            currentUserId={userId}
+            isAdmin={isAdmin}
+          />
+        </TabsContent>
       </Tabs>
     </div>
   );

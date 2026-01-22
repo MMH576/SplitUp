@@ -51,16 +51,17 @@ enum GroupRole {
 // ============================================
 
 model Expense {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   groupId          String
   title            String
   amountCents      Int // Always positive integer, stored in cents
   payerClerkUserId String
+  splitType        SplitType @default(EQUAL) // How the expense is split
   category         String?
-  expenseDate      DateTime @default(now())
+  expenseDate      DateTime  @default(now())
   receiptUrl       String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   group  Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
   splits ExpenseSplit[]
@@ -68,6 +69,11 @@ model Expense {
   @@index([groupId])
   @@index([payerClerkUserId])
   @@index([expenseDate])
+}
+
+enum SplitType {
+  EQUAL  // Split equally among participants
+  CUSTOM // Custom amounts per participant
 }
 
 model ExpenseSplit {
