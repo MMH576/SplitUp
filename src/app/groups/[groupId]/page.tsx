@@ -12,6 +12,7 @@ import { calculateGroupBalances } from "@/lib/utils/balances";
 import { calculateSettlements } from "@/lib/utils/settlements";
 import { SettlementPlan } from "@/components/settlements/settlement-plan";
 import { GroupSettings } from "@/components/groups/group-settings";
+import { FriendSettings } from "@/components/groups/friend-settings";
 
 type PageProps = {
   params: Promise<{ groupId: string }>;
@@ -73,6 +74,9 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
   const friendMember = isFriendGroup
     ? group.members.find((m) => m.clerkUserId !== userId)
     : null;
+  const displayTitle = isFriendGroup
+    ? (friendMember?.displayNameSnapshot || group.name)
+    : group.name;
 
   // Prepare members data for the AddExpenseDialog
   const membersForDialog = group.members.map((m) => ({
@@ -137,23 +141,19 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
               {isFriendGroup ? "Friends" : "Groups"}
             </Link>
             <span>/</span>
-            <span className="truncate max-w-[150px] sm:max-w-none">{group.name}</span>
+            <span className="truncate max-w-[150px] sm:max-w-none">{displayTitle}</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold">{group.name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">{displayTitle}</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
             {isFriendGroup ? (
-              friendMember ? (
-                <>with {friendMember.displayNameSnapshot} · {group._count.expenses} {group._count.expenses === 1 ? "expense" : "expenses"}</>
-              ) : (
-                <>Waiting for them to join · {group._count.expenses} {group._count.expenses === 1 ? "expense" : "expenses"}</>
-              )
+              <>{group._count.expenses} {group._count.expenses === 1 ? "expense" : "expenses"} shared</>
             ) : (
               <>{group.members.length} {group.members.length === 1 ? "member" : "members"} · {group._count.expenses} {group._count.expenses === 1 ? "expense" : "expenses"}</>
             )}
           </p>
         </div>
         <div className="flex gap-2">
-          {isAdmin && <InviteDialog groupId={groupId} />}
+          {isAdmin && !isFriendGroup && <InviteDialog groupId={groupId} />}
           <AddExpenseDialog
             groupId={groupId}
             members={membersForDialog}
@@ -233,9 +233,11 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
               {/* Summary Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Group Balances</CardTitle>
+                  <CardTitle>{isFriendGroup ? "Balance" : "Group Balances"}</CardTitle>
                   <CardDescription>
-                    Positive balance = others owe you. Negative = you owe others.
+                    {isFriendGroup
+                      ? "Your balance with this friend."
+                      : "Positive balance = others owe you. Negative = you owe others."}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -294,7 +296,9 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
                   <CardHeader className="text-center">
                     <CardTitle className="text-green-700">All settled up!</CardTitle>
                     <CardDescription>
-                      Everyone in this group is square. No payments needed.
+                      {isFriendGroup
+                        ? "You're square with each other. No payments needed."
+                        : "Everyone in this group is square. No payments needed."}
                     </CardDescription>
                   </CardHeader>
                 </Card>
@@ -327,19 +331,26 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-4">
-          <GroupSettings
-            groupId={groupId}
-            groupName={group.name}
-            members={group.members.map((m) => ({
-              id: m.id,
-              clerkUserId: m.clerkUserId,
-              displayName: m.displayNameSnapshot,
-              role: m.role,
-              joinedAt: m.joinedAt,
-            }))}
-            currentUserId={userId}
-            isAdmin={isAdmin}
-          />
+          {isFriendGroup ? (
+            <FriendSettings
+              groupId={groupId}
+              friendName={displayTitle}
+            />
+          ) : (
+            <GroupSettings
+              groupId={groupId}
+              groupName={group.name}
+              members={group.members.map((m) => ({
+                id: m.id,
+                clerkUserId: m.clerkUserId,
+                displayName: m.displayNameSnapshot,
+                role: m.role,
+                joinedAt: m.joinedAt,
+              }))}
+              currentUserId={userId}
+              isAdmin={isAdmin}
+            />
+          )}
         </TabsContent>
       </GroupTabs>
     </div>
