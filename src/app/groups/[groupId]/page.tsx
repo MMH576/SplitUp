@@ -69,8 +69,8 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
   const { group } = membership;
   const isAdmin = membership.role === "ADMIN";
 
-  // Detect if this is a friend (2-person) group
-  const isFriendGroup = group.members.length <= 2;
+  // Detect if this is a friend group by type
+  const isFriendGroup = group.type === "FRIEND";
   const friendMember = isFriendGroup
     ? group.members.find((m) => m.clerkUserId !== userId)
     : null;

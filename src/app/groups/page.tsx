@@ -39,14 +39,15 @@ export default async function GroupsPage() {
   const allGroups = memberships.map((m) => ({
     id: m.group.id,
     name: m.group.name,
+    type: m.group.type,
     memberCount: m.group._count.members,
     role: m.role,
     members: m.group.members,
   }));
 
-  // Separate friends (2-person groups) from groups (3+ people)
-  const friends = allGroups.filter((g) => g.memberCount <= 2);
-  const groups = allGroups.filter((g) => g.memberCount > 2);
+  // Separate friends (type=FRIEND) from groups (type=GROUP)
+  const friends = allGroups.filter((g) => g.type === "FRIEND");
+  const groups = allGroups.filter((g) => g.type === "GROUP");
 
   return (
     <div className="container py-6 sm:py-8 px-4 sm:px-6 space-y-8">

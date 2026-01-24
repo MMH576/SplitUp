@@ -14,17 +14,23 @@ datasource db {
 // ============================================
 
 model Group {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   name                 String
+  type                 GroupType @default(GROUP)
   createdByClerkUserId String
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   members  GroupMember[]
   expenses Expense[]
   invites  GroupInvite[]
 
   @@index([createdByClerkUserId])
+}
+
+enum GroupType {
+  GROUP
+  FRIEND
 }
 
 model GroupMember {

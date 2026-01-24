@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     const alreadyFriends = existingGroups.some((m) => {
       const group = m.group;
       return (
-        group._count.members === 2 &&
+        group.type === "FRIEND" &&
         group.members.some((member) => member.clerkUserId === friendClerkId)
       );
     });
@@ -85,6 +85,7 @@ export async function POST(request: Request) {
       const newGroup = await tx.group.create({
         data: {
           name: friendDisplayName,
+          type: "FRIEND",
           createdByClerkUserId: userId,
         },
       });
