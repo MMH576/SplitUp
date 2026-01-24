@@ -88,13 +88,10 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
-    // Only the person paying or receiving can create the settlement record
-    if (
-      userId !== validated.fromClerkUserId &&
-      userId !== validated.toClerkUserId
-    ) {
+    // Only the person paying can initiate "Mark Paid"
+    if (userId !== validated.fromClerkUserId) {
       return NextResponse.json(
-        { error: "You can only create settlements you are involved in" },
+        { error: "Only the person who paid can mark a payment" },
         { status: 403 }
       );
     }
@@ -106,6 +103,7 @@ export async function POST(request: Request, context: RouteContext) {
         toClerkUserId: validated.toClerkUserId,
         amountCents: validated.amountCents,
         status: "PENDING",
+        initiatedByClerkUserId: userId,
       },
     });
 

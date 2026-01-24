@@ -24,6 +24,7 @@ export default async function GroupsPage() {
             select: {
               clerkUserId: true,
               displayNameSnapshot: true,
+              imageUrl: true,
             },
           },
           _count: {
@@ -65,8 +66,8 @@ export default async function GroupsPage() {
                 <FriendCard
                   key={friend.id}
                   id={friend.id}
-                  name={friend.name}
-                  friendName={otherMember?.displayNameSnapshot}
+                  name={otherMember?.displayNameSnapshot || friend.name}
+                  imageUrl={otherMember?.imageUrl}
                   isPending={friend.memberCount === 1}
                 />
               );
@@ -78,6 +79,8 @@ export default async function GroupsPage() {
           </p>
         )}
       </section>
+
+      <hr className="border-border" />
 
       {/* Groups Section */}
       <section>

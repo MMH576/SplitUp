@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatMoney } from "@/lib/utils/money";
 import { toast } from "sonner";
+import { Clock, CheckCircle2, XCircle } from "lucide-react";
 
 type Transfer = {
   fromClerkUserId: string;
@@ -65,6 +66,7 @@ export function SettlementPlan({
   const [copying, setCopying] = useState(false);
   const [markingPaid, setMarkingPaid] = useState<string | null>(null);
   const [confirmTransfer, setConfirmTransfer] = useState<Transfer | null>(null);
+  const [processingSettlement, setProcessingSettlement] = useState<string | null>(null);
 
   const handleCopySummary = async () => {
     if (transfers.length === 0) return;
@@ -99,6 +101,7 @@ export function SettlementPlan({
     }
   };
 
+  // Payer initiates "Mark Paid" - creates a PENDING settlement
   const handleMarkAsPaid = async (transfer: Transfer) => {
     const transferKey = `${transfer.fromClerkUserId}-${transfer.toClerkUserId}`;
     setMarkingPaid(transferKey);
@@ -119,34 +122,9 @@ export function SettlementPlan({
         throw new Error(data.error || "Failed to record payment");
       }
 
-      // Now mark it as completed
-      const createResult = await response.json();
-      const settlementId = createResult.data.id;
-
-      const completeResponse = await fetch(
-        `/api/groups/${groupId}/settlements/${settlementId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "COMPLETED" }),
-        }
-      );
-
-      if (!completeResponse.ok) {
-        throw new Error("Failed to mark as completed");
-      }
-
       setConfirmTransfer(null);
       router.refresh();
-
-      // Show success toast with undo option
-      toast.success("Payment recorded", {
-        action: {
-          label: "Undo",
-          onClick: () => handleUndoSettlement(settlementId),
-        },
-        duration: 8000,
-      });
+      toast.success("Payment marked! Waiting for receiver to confirm.");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to record payment"
@@ -156,13 +134,66 @@ export function SettlementPlan({
     }
   };
 
-  const handleUndoSettlement = async (settlementId: string) => {
+  // Receiver confirms the payment
+  const handleConfirmSettlement = async (settlementId: string) => {
+    setProcessingSettlement(settlementId);
     try {
       const response = await fetch(
         `/api/groups/${groupId}/settlements/${settlementId}`,
         {
-          method: "DELETE",
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "COMPLETED" }),
         }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to confirm payment");
+      }
+
+      toast.success("Payment confirmed!");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to confirm payment"
+      );
+    } finally {
+      setProcessingSettlement(null);
+    }
+  };
+
+  // Reject or cancel a pending settlement
+  const handleRejectSettlement = async (settlementId: string) => {
+    setProcessingSettlement(settlementId);
+    try {
+      const response = await fetch(
+        `/api/groups/${groupId}/settlements/${settlementId}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to reject payment");
+      }
+
+      toast.success("Payment rejected");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to reject payment"
+      );
+    } finally {
+      setProcessingSettlement(null);
+    }
+  };
+
+  // Undo a completed settlement
+  const handleUndoSettlement = async (settlementId: string) => {
+    try {
+      const response = await fetch(
+        `/api/groups/${groupId}/settlements/${settlementId}`,
+        { method: "DELETE" }
       );
 
       if (!response.ok) {
@@ -179,11 +210,20 @@ export function SettlementPlan({
     }
   };
 
-  // Filter completed settlements
+  const pendingSettlements = settlements.filter((s) => s.status === "PENDING");
   const completedSettlements = settlements.filter((s) => s.status === "COMPLETED");
 
+  // Check if a transfer already has a pending settlement
+  const hasPendingSettlement = (transfer: Transfer) => {
+    return pendingSettlements.some(
+      (s) =>
+        s.fromClerkUserId === transfer.fromClerkUserId &&
+        s.toClerkUserId === transfer.toClerkUserId
+    );
+  };
+
   // No transfers needed - everyone is settled
-  if (transfers.length === 0) {
+  if (transfers.length === 0 && pendingSettlements.length === 0) {
     return (
       <div className="space-y-4">
         <Card className="border-green-200 bg-green-50">
@@ -195,7 +235,6 @@ export function SettlementPlan({
           </CardHeader>
         </Card>
 
-        {/* Show settlement history even when all settled */}
         {completedSettlements.length > 0 && (
           <SettlementHistory
             settlements={completedSettlements}
@@ -209,46 +248,135 @@ export function SettlementPlan({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <CardTitle>Settlement Plan</CardTitle>
-              <CardDescription>
-                {transfers.length} {transfers.length === 1 ? "payment" : "payments"} to settle all debts
-              </CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopySummary}
-              disabled={copying}
-            >
-              {copying ? "Copying..." : "Copy Summary"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {transfers.map((transfer, index) => {
-              const isCurrentUserPaying = transfer.fromClerkUserId === currentUserId;
-              const isCurrentUserReceiving = transfer.toClerkUserId === currentUserId;
-              const isInvolved = isCurrentUserPaying || isCurrentUserReceiving;
-              const transferKey = `${transfer.fromClerkUserId}-${transfer.toClerkUserId}`;
-              const isMarking = markingPaid === transferKey;
+      {/* Pending Payments - needs action */}
+      {pendingSettlements.length > 0 && (
+        <Card className="border-yellow-200">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4 text-yellow-600" />
+              Pending Confirmations
+            </CardTitle>
+            <CardDescription>
+              These payments are waiting to be confirmed by the receiver
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pendingSettlements.map((settlement) => {
+                const isPayer = settlement.fromClerkUserId === currentUserId;
+                const isReceiver = settlement.toClerkUserId === currentUserId;
+                const isProcessing = processingSettlement === settlement.id;
 
-              return (
-                <div
-                  key={`${transfer.fromClerkUserId}-${transfer.toClerkUserId}-${index}`}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border gap-3 ${
-                    isCurrentUserPaying
-                      ? "bg-red-50 border-red-200"
-                      : isCurrentUserReceiving
-                      ? "bg-green-50 border-green-200"
-                      : "bg-muted/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
+                return (
+                  <div
+                    key={settlement.id}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border gap-2 ${
+                      isReceiver
+                        ? "bg-yellow-50 border-yellow-200"
+                        : "bg-muted/50"
+                    }`}
+                  >
+                    <div>
+                      <p className="text-sm font-medium">
+                        {settlement.fromDisplayName}
+                        {isPayer && " (you)"}
+                        {" paid "}
+                        {settlement.toDisplayName}
+                        {isReceiver && " (you)"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(settlement.createdAt).toLocaleDateString()}
+                        {isPayer && " · Waiting for confirmation"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">
+                        {formatMoney(settlement.amountCents)}
+                      </span>
+                      {isReceiver && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleConfirmSettlement(settlement.id)}
+                            disabled={isProcessing}
+                            className="h-7 text-xs"
+                          >
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Confirm
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRejectSettlement(settlement.id)}
+                            disabled={isProcessing}
+                            className="h-7 text-xs text-destructive hover:text-destructive"
+                          >
+                            <XCircle className="h-3 w-3 mr-1" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      {isPayer && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleRejectSettlement(settlement.id)}
+                          disabled={isProcessing}
+                          className="h-7 text-xs"
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Settlement Plan */}
+      {transfers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <CardTitle>Settlement Plan</CardTitle>
+                <CardDescription>
+                  {transfers.length} {transfers.length === 1 ? "payment" : "payments"} to settle all debts
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopySummary}
+                disabled={copying}
+              >
+                {copying ? "Copying..." : "Copy Summary"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {transfers.map((transfer, index) => {
+                const isCurrentUserPaying = transfer.fromClerkUserId === currentUserId;
+                const isPending = hasPendingSettlement(transfer);
+                const transferKey = `${transfer.fromClerkUserId}-${transfer.toClerkUserId}`;
+                const isMarking = markingPaid === transferKey;
+
+                return (
+                  <div
+                    key={`${transfer.fromClerkUserId}-${transfer.toClerkUserId}-${index}`}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border gap-3 ${
+                      isCurrentUserPaying
+                        ? "bg-red-50 border-red-200"
+                        : transfer.toClerkUserId === currentUserId
+                        ? "bg-green-50 border-green-200"
+                        : "bg-muted/50"
+                    }`}
+                  >
                     <div>
                       <p className="font-medium">
                         {transfer.fromDisplayName}
@@ -258,39 +386,43 @@ export function SettlementPlan({
                       </p>
                       <p className="text-sm text-muted-foreground">
                         pays {transfer.toDisplayName}
-                        {isCurrentUserReceiving && " (you)"}
+                        {transfer.toClerkUserId === currentUserId && " (you)"}
                       </p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`text-lg font-semibold ${
-                        isCurrentUserPaying
-                          ? "text-red-600"
-                          : isCurrentUserReceiving
-                          ? "text-green-600"
-                          : ""
-                      }`}
-                    >
-                      {formatMoney(transfer.amountCents)}
-                    </span>
-                    {isInvolved && (
-                      <Button
-                        size="sm"
-                        variant={isCurrentUserPaying ? "default" : "outline"}
-                        onClick={() => setConfirmTransfer(transfer)}
-                        disabled={isMarking}
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-lg font-semibold ${
+                          isCurrentUserPaying
+                            ? "text-red-600"
+                            : transfer.toClerkUserId === currentUserId
+                            ? "text-green-600"
+                            : ""
+                        }`}
                       >
-                        {isMarking ? "Recording..." : "Mark Paid"}
-                      </Button>
-                    )}
+                        {formatMoney(transfer.amountCents)}
+                      </span>
+                      {isCurrentUserPaying && !isPending && (
+                        <Button
+                          size="sm"
+                          onClick={() => setConfirmTransfer(transfer)}
+                          disabled={isMarking}
+                        >
+                          {isMarking ? "Sending..." : "Mark Paid"}
+                        </Button>
+                      )}
+                      {isPending && isCurrentUserPaying && (
+                        <span className="text-xs text-yellow-600 font-medium">
+                          Pending
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Settlement History */}
       {completedSettlements.length > 0 && (
@@ -308,31 +440,26 @@ export function SettlementPlan({
         expenseBreakdown={expenseBreakdown}
       />
 
-      {/* Confirm Payment Dialog */}
+      {/* Confirm Mark Paid Dialog */}
       <AlertDialog
         open={confirmTransfer !== null}
         onOpenChange={(open) => !open && setConfirmTransfer(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm payment</AlertDialogTitle>
+            <AlertDialogTitle>Mark as paid?</AlertDialogTitle>
             <AlertDialogDescription>
               {confirmTransfer && (
                 <>
-                  Mark that{" "}
-                  <span className="font-medium text-foreground">
-                    {confirmTransfer.fromDisplayName}
-                    {confirmTransfer.fromClerkUserId === currentUserId && " (you)"}
-                  </span>{" "}
-                  paid{" "}
+                  This will notify{" "}
                   <span className="font-medium text-foreground">
                     {confirmTransfer.toDisplayName}
-                    {confirmTransfer.toClerkUserId === currentUserId && " (you)"}
                   </span>{" "}
+                  that you paid them{" "}
                   <span className="font-semibold text-foreground">
                     {formatMoney(confirmTransfer.amountCents)}
                   </span>
-                  ?
+                  . They will need to confirm they received the payment.
                 </>
               )}
             </AlertDialogDescription>
@@ -349,7 +476,7 @@ export function SettlementPlan({
               }}
               disabled={markingPaid !== null}
             >
-              {markingPaid !== null ? "Recording..." : "Confirm Payment"}
+              {markingPaid !== null ? "Sending..." : "Mark Paid"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -373,7 +500,7 @@ function SettlementHistory({
       <CardHeader>
         <CardTitle className="text-base">Payment History</CardTitle>
         <CardDescription>
-          Payments that have been marked as completed
+          Payments that have been confirmed
         </CardDescription>
       </CardHeader>
       <CardContent>

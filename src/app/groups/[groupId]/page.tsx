@@ -206,6 +206,13 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
               groupId={groupId}
               members={membersForDialog}
               currentUserId={userId}
+              settlements={settlementRecords
+                .filter((s) => s.status === "COMPLETED")
+                .map((s) => ({
+                  fromClerkUserId: s.fromClerkUserId,
+                  toClerkUserId: s.toClerkUserId,
+                  amountCents: s.amountCents,
+                }))}
             />
           )}
         </TabsContent>

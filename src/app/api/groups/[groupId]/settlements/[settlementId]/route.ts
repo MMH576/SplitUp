@@ -33,13 +33,10 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    // Only the payer or receiver can update the status
-    if (
-      userId !== settlement.fromClerkUserId &&
-      userId !== settlement.toClerkUserId
-    ) {
+    // Only the receiver can confirm the payment
+    if (userId !== settlement.toClerkUserId) {
       return NextResponse.json(
-        { error: "You can only update settlements you are involved in" },
+        { error: "Only the receiver can confirm a payment" },
         { status: 403 }
       );
     }

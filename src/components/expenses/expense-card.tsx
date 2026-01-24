@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Eye, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -40,6 +40,12 @@ type Member = {
 
 type SplitType = "EQUAL" | "CUSTOM";
 
+type SettlementRecord = {
+  fromClerkUserId: string;
+  toClerkUserId: string;
+  amountCents: number;
+};
+
 type ExpenseCardProps = {
   expense: {
     id: string;
@@ -53,6 +59,7 @@ type ExpenseCardProps = {
   groupId: string;
   members: Member[];
   currentUserId: string;
+  settlements?: SettlementRecord[];
 };
 
 export function ExpenseCard({
@@ -60,6 +67,7 @@ export function ExpenseCard({
   groupId,
   members,
   currentUserId,
+  settlements = [],
 }: ExpenseCardProps) {
   const router = useRouter();
   const [showDetails, setShowDetails] = useState(false);
@@ -67,7 +75,57 @@ export function ExpenseCard({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const isCreator = expense.payerClerkUserId === currentUserId;
   const payer = members.find((m) => m.clerkUserId === expense.payerClerkUserId);
+  const userSplit = expense.splits.find((s) => s.clerkUserId === currentUserId);
+
+  // Calculate if the expense is fully settled
+  const isFullySettled = (() => {
+    const debtors = expense.splits.filter(
+      (s) => s.clerkUserId !== expense.payerClerkUserId && s.shareCents > 0
+    );
+    if (debtors.length === 0) return true;
+
+    return debtors.every((debtor) => {
+      const totalSettled = settlements
+        .filter(
+          (s) =>
+            s.fromClerkUserId === debtor.clerkUserId &&
+            s.toClerkUserId === expense.payerClerkUserId
+        )
+        .reduce((sum, s) => sum + s.amountCents, 0);
+      return totalSettled >= debtor.shareCents;
+    });
+  })();
+
+  // Determine what amount and label to show
+  const getAmountDisplay = () => {
+    if (isCreator) {
+      const payerSplit = expense.splits.find(
+        (s) => s.clerkUserId === expense.payerClerkUserId
+      );
+      const expectedBack = expense.amountCents - (payerSplit?.shareCents ?? 0);
+      return {
+        amount: formatMoney(expense.amountCents),
+        label: expectedBack > 0 ? `Get back ${formatMoney(expectedBack)}` : "You paid",
+        colorClass: expectedBack > 0 ? "text-green-600" : "",
+      };
+    } else if (userSplit && userSplit.shareCents > 0) {
+      return {
+        amount: formatMoney(userSplit.shareCents),
+        label: `You owe ${payer?.displayName ?? ""}`,
+        colorClass: "text-red-600",
+      };
+    } else {
+      return {
+        amount: "",
+        label: "",
+        colorClass: "",
+      };
+    }
+  };
+
+  const amountDisplay = getAmountDisplay();
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -100,22 +158,34 @@ export function ExpenseCard({
         <CardHeader className="py-4">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-base truncate">{expense.title}</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base truncate">{expense.title}</CardTitle>
+                {isFullySettled && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full shrink-0">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Settled
+                  </span>
+                )}
+              </div>
               <CardDescription>
-                Paid by {payer?.displayName ?? "Unknown"} ·{" "}
-                {expense.splits.length}{" "}
-                {expense.splits.length === 1 ? "person" : "people"}
+                {isCreator ? (
+                  <>You paid · {new Date(expense.expenseDate).toLocaleDateString()}</>
+                ) : (
+                  <>Paid by {payer?.displayName ?? "Unknown"} · {new Date(expense.expenseDate).toLocaleDateString()}</>
+                )}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <div className="text-right">
-                <div className="font-semibold">
-                  {formatMoney(expense.amountCents)}
+              {amountDisplay.amount && (
+                <div className="text-right">
+                  <div className={`font-semibold ${amountDisplay.colorClass}`}>
+                    {amountDisplay.amount}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {amountDisplay.label}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {new Date(expense.expenseDate).toLocaleDateString()}
-                </div>
-              </div>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -128,18 +198,22 @@ export function ExpenseCard({
                     <Eye className="mr-2 h-4 w-4" />
                     View details
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowEdit(true)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
+                  {isCreator && (
+                    <>
+                      <DropdownMenuItem onClick={() => setShowEdit(true)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -156,15 +230,17 @@ export function ExpenseCard({
         currentUserId={currentUserId}
       />
 
-      {/* Edit Dialog */}
-      <EditExpenseDialog
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        expense={expense}
-        groupId={groupId}
-        members={members}
-        currentUserId={currentUserId}
-      />
+      {/* Edit Dialog - only rendered for creator */}
+      {isCreator && (
+        <EditExpenseDialog
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          expense={expense}
+          groupId={groupId}
+          members={members}
+          currentUserId={currentUserId}
+        />
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

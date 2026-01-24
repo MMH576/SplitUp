@@ -74,7 +74,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const { groupId, expenseId } = await params;
-    await requireGroupMember(groupId);
+    const { userId } = await requireGroupMember(groupId);
 
     const expense = await prisma.expense.findUnique({
       where: { id: expenseId },
@@ -87,6 +87,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (expense.groupId !== groupId) {
       return apiError("Expense not found in this group", 404);
+    }
+
+    // Only the expense creator (payer) can edit
+    if (expense.payerClerkUserId !== userId) {
+      return apiError("Only the person who created this expense can edit it", 403);
     }
 
     const body = await request.json();
@@ -260,7 +265,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { groupId, expenseId } = await params;
-    await requireGroupMember(groupId);
+    const { userId } = await requireGroupMember(groupId);
 
     const expense = await prisma.expense.findUnique({
       where: { id: expenseId },
@@ -272,6 +277,11 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     if (expense.groupId !== groupId) {
       return apiError("Expense not found in this group", 404);
+    }
+
+    // Only the expense creator (payer) can delete
+    if (expense.payerClerkUserId !== userId) {
+      return apiError("Only the person who created this expense can delete it", 403);
     }
 
     // Delete expense (splits are deleted via cascade)

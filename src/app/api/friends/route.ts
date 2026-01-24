@@ -1,4 +1,4 @@
-import { clerkClient } from "@clerk/nextjs/server";
+import { clerkClient, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, getUserDisplayName } from "@/lib/auth";
 import { handleApiError, apiSuccess, apiError } from "@/lib/api-utils";
@@ -67,14 +67,17 @@ export async function POST(request: Request) {
       return apiError("You already have an expense group with this person.", 409);
     }
 
-    // Get display names
+    // Get display names and profile pictures
     const currentUserDisplayName = await getUserDisplayName();
+    const currentClerkUser = await currentUser();
+    const currentUserImageUrl = currentClerkUser?.imageUrl || null;
     const friendDisplayName =
       friendUser.firstName && friendUser.lastName
         ? `${friendUser.firstName} ${friendUser.lastName}`
         : friendUser.firstName
           ? friendUser.firstName
           : email.split("@")[0];
+    const friendImageUrl = friendUser.imageUrl || null;
 
     // Create the group with both members
     const group = await prisma.$transaction(async (tx) => {
@@ -93,6 +96,7 @@ export async function POST(request: Request) {
           clerkUserId: userId,
           role: GroupRole.ADMIN,
           displayNameSnapshot: currentUserDisplayName,
+          imageUrl: currentUserImageUrl,
         },
       });
 
@@ -103,6 +107,7 @@ export async function POST(request: Request) {
           clerkUserId: friendClerkId,
           role: GroupRole.MEMBER,
           displayNameSnapshot: friendDisplayName,
+          imageUrl: friendImageUrl,
         },
       });
 

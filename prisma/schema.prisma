@@ -33,6 +33,7 @@ model GroupMember {
   clerkUserId         String
   role                GroupRole @default(MEMBER)
   displayNameSnapshot String // Cached display name at join time
+  imageUrl            String? // Profile picture URL from Clerk
   joinedAt            DateTime  @default(now())
 
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -111,14 +112,15 @@ model GroupInvite {
 // ============================================
 
 model Settlement {
-  id              String           @id @default(cuid())
-  groupId         String
-  fromClerkUserId String
-  toClerkUserId   String
-  amountCents     Int
-  status          SettlementStatus @default(PENDING)
-  settledAt       DateTime?
-  createdAt       DateTime         @default(now())
+  id                   String           @id @default(cuid())
+  groupId              String
+  fromClerkUserId      String
+  toClerkUserId        String
+  amountCents          Int
+  status               SettlementStatus @default(PENDING)
+  initiatedByClerkUserId String? // Who initiated the mark-paid action
+  settledAt            DateTime?
+  createdAt            DateTime         @default(now())
 
   @@index([groupId])
 }

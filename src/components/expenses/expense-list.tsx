@@ -36,11 +36,18 @@ type Member = {
   displayName: string;
 };
 
+type SettlementRecord = {
+  fromClerkUserId: string;
+  toClerkUserId: string;
+  amountCents: number;
+};
+
 type ExpenseListProps = {
   expenses: Expense[];
   groupId: string;
   members: Member[];
   currentUserId: string;
+  settlements?: SettlementRecord[];
 };
 
 export function ExpenseList({
@@ -48,6 +55,7 @@ export function ExpenseList({
   groupId,
   members,
   currentUserId,
+  settlements = [],
 }: ExpenseListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [payerFilter, setPayerFilter] = useState<string>("all");
@@ -133,6 +141,7 @@ export function ExpenseList({
               groupId={groupId}
               members={members}
               currentUserId={currentUserId}
+              settlements={settlements}
             />
           ))}
         </div>
