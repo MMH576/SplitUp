@@ -68,6 +68,12 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
   const { group } = membership;
   const isAdmin = membership.role === "ADMIN";
 
+  // Detect if this is a friend (2-person) group
+  const isFriendGroup = group.members.length <= 2;
+  const friendMember = isFriendGroup
+    ? group.members.find((m) => m.clerkUserId !== userId)
+    : null;
+
   // Prepare members data for the AddExpenseDialog
   const membersForDialog = group.members.map((m) => ({
     id: m.id,
@@ -128,14 +134,22 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
         <div>
           <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-1">
             <Link href="/groups" className="hover:underline">
-              My Groups
+              {isFriendGroup ? "Friends" : "Groups"}
             </Link>
             <span>/</span>
             <span className="truncate max-w-[150px] sm:max-w-none">{group.name}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold">{group.name}</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            {group.members.length} {group.members.length === 1 ? "member" : "members"} · {group._count.expenses} {group._count.expenses === 1 ? "expense" : "expenses"}
+            {isFriendGroup ? (
+              friendMember ? (
+                <>with {friendMember.displayNameSnapshot} · {group._count.expenses} {group._count.expenses === 1 ? "expense" : "expenses"}</>
+              ) : (
+                <>Waiting for them to join · {group._count.expenses} {group._count.expenses === 1 ? "expense" : "expenses"}</>
+              )
+            ) : (
+              <>{group.members.length} {group.members.length === 1 ? "member" : "members"} · {group._count.expenses} {group._count.expenses === 1 ? "expense" : "expenses"}</>
+            )}
           </p>
         </div>
         <div className="flex gap-2">

@@ -56,6 +56,8 @@ export function AddExpenseDialog({
   members,
   currentUserId,
 }: AddExpenseDialogProps) {
+  // Detect if this is a friend (2-person) group - simplify UI
+  const isFriendGroup = members.length <= 2;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -384,64 +386,73 @@ export function AddExpenseDialog({
             {/* Equal Split UI */}
             {splitType === "EQUAL" && (
               <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <Label>Who benefited from this?</Label>
-                  <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={selectAllParticipants}
-                      className="h-auto py-1 px-2 text-xs"
-                    >
-                      Select all
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearAllParticipants}
-                      className="h-auto py-1 px-2 text-xs text-muted-foreground"
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-                <div
-                  className={`border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto ${
-                    errors.participants ? "border-destructive" : ""
-                  }`}
-                >
-                  {members.map((member) => (
-                    <div
-                      key={member.clerkUserId}
-                      className="flex items-center space-x-2"
-                    >
-                      <Checkbox
-                        id={`participant-${member.clerkUserId}`}
-                        checked={participantIds.includes(member.clerkUserId)}
-                        onCheckedChange={(checked) =>
-                          handleParticipantToggle(
-                            member.clerkUserId,
-                            checked === true
-                          )
-                        }
-                        disabled={isLoading}
-                      />
-                      <label
-                        htmlFor={`participant-${member.clerkUserId}`}
-                        className="text-sm cursor-pointer flex-1"
-                      >
-                        {member.displayName}
-                        {member.clerkUserId === currentUserId && " (you)"}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-                {errors.participants && (
-                  <p className="text-sm text-destructive">
-                    {errors.participants}
+                {/* For friend groups (2 people), auto-select both - no checkboxes needed */}
+                {isFriendGroup ? (
+                  <p className="text-sm text-muted-foreground">
+                    Split equally between both of you
                   </p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <Label>Who benefited from this?</Label>
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={selectAllParticipants}
+                          className="h-auto py-1 px-2 text-xs"
+                        >
+                          Select all
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearAllParticipants}
+                          className="h-auto py-1 px-2 text-xs text-muted-foreground"
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </div>
+                    <div
+                      className={`border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto ${
+                        errors.participants ? "border-destructive" : ""
+                      }`}
+                    >
+                      {members.map((member) => (
+                        <div
+                          key={member.clerkUserId}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`participant-${member.clerkUserId}`}
+                            checked={participantIds.includes(member.clerkUserId)}
+                            onCheckedChange={(checked) =>
+                              handleParticipantToggle(
+                                member.clerkUserId,
+                                checked === true
+                              )
+                            }
+                            disabled={isLoading}
+                          />
+                          <label
+                            htmlFor={`participant-${member.clerkUserId}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {member.displayName}
+                            {member.clerkUserId === currentUserId && " (you)"}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    {errors.participants && (
+                      <p className="text-sm text-destructive">
+                        {errors.participants}
+                      </p>
+                    )}
+                  </>
                 )}
                 {participantIds.length > 0 && effectiveAmountCents > 0 && (
                   <div className="text-sm space-y-1 pt-2 border-t">
