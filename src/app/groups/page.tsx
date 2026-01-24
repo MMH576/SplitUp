@@ -7,6 +7,8 @@ import { FriendCard } from "@/components/groups/friend-card";
 import { JoinGroupDialog } from "@/components/groups/join-group-dialog";
 import { AddFriendDialog } from "@/components/groups/add-friend-dialog";
 import { UserPlus, Users, Receipt, TrendingUp } from "lucide-react";
+import { OnboardingDialog } from "@/components/layout/onboarding-dialog";
+import { DemoFriendCard, DemoGroupCard } from "@/components/groups/demo-cards";
 
 export default async function GroupsPage() {
   const { userId } = await auth();
@@ -56,9 +58,13 @@ export default async function GroupsPage() {
   const totalPeople = new Set(
     allGroups.flatMap((g) => g.members.map((m) => m.clerkUserId))
   ).size;
+  const isNewUser = allGroups.length === 0;
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] overflow-hidden">
+      {/* Onboarding dialog - auto-shows for new users */}
+      {isNewUser && <OnboardingDialog isNewUser />}
+
       {/* Decorative background blobs */}
       <div className="absolute top-20 -left-32 w-96 h-96 rounded-full bg-[oklch(0.80_0.065_220/0.08)] blur-3xl" />
       <div className="absolute top-60 -right-32 w-80 h-80 rounded-full bg-[oklch(0.82_0.175_85/0.06)] blur-3xl" />
@@ -111,10 +117,13 @@ export default async function GroupsPage() {
               })}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-[oklch(0.72_0.18_55/0.4)] bg-[oklch(0.82_0.175_85/0.05)] p-6 text-center">
-              <UserPlus className="h-8 w-8 text-[oklch(0.72_0.18_55/0.5)] mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No friends added yet. Add a friend by their email to start splitting expenses 1:1.
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <DemoFriendCard name="Alex Johnson" />
+                <DemoFriendCard name="Sarah Kim" />
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Add a friend by their email to start splitting expenses 1:1
               </p>
             </div>
           )}
@@ -147,10 +156,14 @@ export default async function GroupsPage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-6 text-center">
-              <Users className="h-8 w-8 text-primary/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No groups yet. Create a group for trips, shared housing, or any multi-person expenses.
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <DemoGroupCard name="Trip to Paris" memberCount={4} />
+                <DemoGroupCard name="Roommates" memberCount={3} />
+                <DemoGroupCard name="Office Lunch" memberCount={6} />
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Create a group for trips, shared housing, or any multi-person expenses
               </p>
             </div>
           )}

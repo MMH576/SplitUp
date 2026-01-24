@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { OnboardingTrigger } from "./onboarding-trigger";
 
 export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center px-4 sm:px-6">
         <div className="mr-4 flex">
-          <Link href="/" className="mr-4 sm:mr-6 flex items-center space-x-2">
+          <Link href="/groups" className="mr-4 sm:mr-6 flex items-center space-x-2">
             <span className="font-bold text-lg sm:text-xl text-gradient">SplitUp</span>
           </Link>
         </div>
@@ -27,12 +28,7 @@ export function Navbar() {
           </SignedOut>
 
           <SignedIn>
-            <Link href="/groups">
-              <Button variant="ghost" size="sm">
-                <span className="hidden sm:inline">My Groups</span>
-                <span className="sm:hidden">Groups</span>
-              </Button>
-            </Link>
+            <OnboardingTrigger />
             <UserButton
               afterSignOutUrl="/"
               appearance={{
