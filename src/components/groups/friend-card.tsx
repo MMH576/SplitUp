@@ -17,10 +17,10 @@ export function FriendCard({ id, name, imageUrl, isPending }: FriendCardProps) {
 
   return (
     <Link href={`/groups/${id}`}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+      <Card className="hover:shadow-lg transition-all hover:-translate-y-0.5 cursor-pointer h-full border-l-4 border-l-[oklch(0.72_0.18_55)]">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
+            <div className="h-10 w-10 rounded-full bg-[oklch(0.82_0.175_85/0.15)] flex items-center justify-center overflow-hidden shrink-0">
               {imageUrl ? (
                 <Image
                   src={imageUrl}
@@ -30,7 +30,7 @@ export function FriendCard({ id, name, imageUrl, isPending }: FriendCardProps) {
                   className="h-10 w-10 rounded-full object-cover"
                 />
               ) : (
-                <span className="text-lg font-semibold text-primary">
+                <span className="text-lg font-semibold text-[oklch(0.62_0.16_70)]">
                   {firstLetter}
                 </span>
               )}
@@ -38,7 +38,7 @@ export function FriendCard({ id, name, imageUrl, isPending }: FriendCardProps) {
             <div className="flex-1 min-w-0">
               <CardTitle className="text-lg truncate">{name}</CardTitle>
               {isPending ? (
-                <CardDescription className="flex items-center gap-1">
+                <CardDescription className="flex items-center gap-1 text-[oklch(0.72_0.18_55)]">
                   <Clock className="h-3 w-3" />
                   Waiting for them to join
                 </CardDescription>

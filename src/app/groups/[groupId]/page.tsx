@@ -137,13 +137,13 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
           <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-1">
-            <Link href="/groups" className="hover:underline">
+            <Link href="/groups" className="hover:underline hover:text-primary transition-colors">
               {isFriendGroup ? "Friends" : "Groups"}
             </Link>
             <span>/</span>
             <span className="truncate max-w-[150px] sm:max-w-none">{displayTitle}</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold">{displayTitle}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gradient">{displayTitle}</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
             {isFriendGroup ? (
               <>{group._count.expenses} {group._count.expenses === 1 ? "expense" : "expenses"} shared</>
@@ -174,7 +174,7 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
         {/* Expenses Tab */}
         <TabsContent value="expenses" className="space-y-4">
           {group.expenses.length === 0 ? (
-            <Card className="border-dashed">
+            <Card className="border-dashed border-primary/30">
               <CardHeader className="text-center">
                 <CardTitle>No expenses yet</CardTitle>
                 <CardDescription>
@@ -292,9 +292,9 @@ export default async function GroupPage({ params, searchParams }: PageProps) {
 
               {/* All Settled Message */}
               {balances.every((b) => b.netCents === 0) && (
-                <Card className="border-green-200 bg-green-50">
+                <Card className="border-primary/30 bg-primary/5">
                   <CardHeader className="text-center">
-                    <CardTitle className="text-green-700">All settled up!</CardTitle>
+                    <CardTitle className="text-primary">All settled up!</CardTitle>
                     <CardDescription>
                       {isFriendGroup
                         ? "You're square with each other. No payments needed."

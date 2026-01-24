@@ -64,7 +64,7 @@ export function AddFriendDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className="border-[oklch(0.72_0.18_55/0.4)] text-[oklch(0.62_0.16_70)] hover:bg-[oklch(0.82_0.175_85/0.1)]">
           <UserPlus className="h-4 w-4 mr-2" />
           Add Friend
         </Button>

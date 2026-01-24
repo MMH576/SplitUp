@@ -10,7 +10,7 @@ export function Navbar() {
       <div className="container flex h-14 items-center px-4 sm:px-6">
         <div className="mr-4 flex">
           <Link href="/" className="mr-4 sm:mr-6 flex items-center space-x-2">
-            <span className="font-bold text-lg sm:text-xl">SplitUp</span>
+            <span className="font-bold text-lg sm:text-xl text-gradient">SplitUp</span>
           </Link>
         </div>
 
@@ -22,7 +22,7 @@ export function Navbar() {
               </Button>
             </SignInButton>
             <Link href="/sign-up">
-              <Button size="sm">Get Started</Button>
+              <Button size="sm" className="bg-[oklch(0.72_0.18_55)] hover:bg-[oklch(0.67_0.18_55)] text-white">Get Started</Button>
             </Link>
           </SignedOut>
 

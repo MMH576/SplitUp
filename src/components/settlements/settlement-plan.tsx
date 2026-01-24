@@ -226,9 +226,9 @@ export function SettlementPlan({
   if (transfers.length === 0 && pendingSettlements.length === 0) {
     return (
       <div className="space-y-4">
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-primary/30 bg-primary/5">
           <CardHeader className="text-center">
-            <CardTitle className="text-green-700">All settled up!</CardTitle>
+            <CardTitle className="text-primary">All settled up!</CardTitle>
             <CardDescription>
               Everyone in this group is square. No payments needed.
             </CardDescription>

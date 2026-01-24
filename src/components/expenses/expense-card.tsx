@@ -154,14 +154,14 @@ export function ExpenseCard({
 
   return (
     <>
-      <Card>
+      <Card className="hover:shadow-md transition-all">
         <CardHeader className="py-4">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <CardTitle className="text-base truncate">{expense.title}</CardTitle>
                 {isFullySettled && (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full shrink-0">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
                     <CheckCircle2 className="h-3 w-3" />
                     Settled
                   </span>
